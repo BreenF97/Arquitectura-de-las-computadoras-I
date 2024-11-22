@@ -1,3 +1,27 @@
+		###CODIGO DEL PDF, PARA IR AGREGANDO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###LISTA ENLAZADA
+
 	.data
 p_cat:	.word 0
 
