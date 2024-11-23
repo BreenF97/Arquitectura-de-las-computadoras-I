@@ -107,25 +107,9 @@ main:	la $t0, schedv		#inicializacion
 	
 newcategory:
 	addiu $sp, $sp, -4	#Stack pointer crece decrec. Al restarle 4, me muevo -4 bytes a la sig direcc, a la cual apuntara sp                         
-	
-	VENGO DE ARRIBA
-	mas cosaS
-	sp-100400	voy a escribir			sp addiu sp-4
-	sp-100399
-	sp-100398
-	sp-100397
-	sp-100396	voy a escribir	4(sp)		ahora sp esta aca
-	sp-100395
-	
-	sp-100400	voy a escribir			sw $t0, ($sp)	sp esta aca
-	sp-100399
-	sp-100398
-	sp-100397
-	sp-100396	voy a escribir	4(sp)		
-	
-	sw $ra, 4($sp)	#No retrocede el puntero! Guardo ra en la direcc inicial (-4+4). Asi evito sobreesc.xq sp apunta a la sig direcc
-	la $a0, catName		#input category name
-#	jal getblock
+	sw $ra, 4($sp)	#No retrocede el puntero! Guardo ra en la direcc inicial (-4+4). Evito sobreesc.xq sp apunta a la sig direcc
+	la $a0, catName		#input category name	##cargo la direcc de catName (msg)
+	jal getblock
 #	move $a2, $v0 	#a2= *char to category name
 #	la $a0, cclist	#a0=list
 #	li $a1, 0 	#a1=null
@@ -133,6 +117,21 @@ newcategory:
 #	lw $t0, wclist
 #	bnez $t0, newcategory_end
 #	sw $v0, wclist 	#update working list if was NULL
+
+getblock: 
+	addi $sp, $sp, -4
+	sw $ra, 4($sp)		#estoy guardando la 2da direcc de retorno en sp, para volver a func new category
+	li $v0, 4
+	syscall
+	jal smalloc
+	move $a0, $v0
+	li $a1, 16
+	li $v0, 8
+	syscall
+	move $v0, $a0
+	lw $ra, 4($sp)
+	addi $sp, $sp, 4
+	jr $ra
 	
 #newcategory_end: 
 #	li $v0, 0 	#return success
