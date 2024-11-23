@@ -1,5 +1,5 @@
 		###CODIGO DEL PDF, PARA IR AGREGANDO
-
+	
 	.data
 slist:	.word 0		#puntero - lo utilizan las funciones smalloc y sfree
 cclist:	.word 0		#puntero a la lista de categorias - circular category list
@@ -29,8 +29,8 @@ success:.asciiz "La operacion se realizo con exito\n\n"
 .text
 
 main:	la $t0, schedv		#inicializacion
-#	la $t1, newcategory	#cargo c/ direcc del menu, y la guardo en el space schedv
-#	sw $t1, 0($t0)
+	la $t1, newcategory	#cargo c/ direcc del menu, y la guardo en el space schedv
+	sw $t1, 0($t0)
 #	la $t1, nextcategory
 #	sw $t1, 4($t0)
 #	la $t1, prevcategory
@@ -47,17 +47,38 @@ main:	la $t0, schedv		#inicializacion
 #	sw $t1, 28($t0)
 	
 	
-	
 #Imprimo menu
+	
 	li $v0, 4
 	la $a0, menu
 	syscall
 	
-	
 #Tomo el input del usuario	
+	
 	li $v0, 5
 	syscall
 	move $t1, $v0	#Lo paso a t1 porque al v0 lo voy a estar pisando constantemente con syscall seguro
+	
+#Hago una comparacion entre el input del usuario y los nros del menu para saber a que funcion salto.
+
+	beqz $t1, end
+	li $t2, 1
+	beq $t1, $t2, newcategory
+#	li $t2, 2
+#	beq $t1, $t2, nextcategory
+#	li $t2, 3
+#	beq $t1, $t2, prevcategory
+#	li $t2, 4
+#	beq $t1, $t2, listcategory
+#	li $t2, 5
+#	beq $t1, $t2, delcategory
+#	li $t2, 6
+#	beq $t1, $t2, newobject
+#	li $t2, 7
+#	beq $t1, $t2, listobjects
+#	li $t2, 8
+#	beq $t1, $t2, delobject
+	
 	
 	
 	
@@ -71,23 +92,39 @@ main:	la $t0, schedv		#inicializacion
 #	sw $t0, slist
 #	jr $ra
 	
-#sbrk: 
-#	li $a0, 16 	#node size fixed 4 word
-#	li $v0, 9
-#	syscall		#return node address in v0
-#	jr $ra
+	#sbrk: 
+		#li $a0, 16 	#node size fixed 4 word
+		#li $v0, 9
+		#syscall		#return node address in v0
+		#jr $ra
 	
-#sfree: 	
+#sfree: 		#en $a0 debe estar la direccion de memoria del nodo a eliminar	
 #	lw $t0, slist
 #	sw $t0, 12($a0)
 #	sw $a0, slist 	#a0 node adrdress in unused list
 #	jr $ra
 	
 	
-#newcategory:
-#	addiu $sp, $sp, -4
-#	sw $ra, 4($sp)
-#	la $a0, catName	#input category name
+newcategory:
+	addiu $sp, $sp, -4	#Stack pointer crece decrec. Al restarle 4, me muevo -4 bytes a la sig direcc, a la cual apuntara sp                         
+	
+	VENGO DE ARRIBA
+	mas cosaS
+	sp-100400	voy a escribir			sp addiu sp-4
+	sp-100399
+	sp-100398
+	sp-100397
+	sp-100396	voy a escribir	4(sp)		ahora sp esta aca
+	sp-100395
+	
+	sp-100400	voy a escribir			sw $t0, ($sp)	sp esta aca
+	sp-100399
+	sp-100398
+	sp-100397
+	sp-100396	voy a escribir	4(sp)		
+	
+	sw $ra, 4($sp)	#No retrocede el puntero! Guardo ra en la direcc inicial (-4+4). Asi evito sobreesc.xq sp apunta a la sig direcc
+	la $a0, catName		#input category name
 #	jal getblock
 #	move $a2, $v0 	#a2= *char to category name
 #	la $a0, cclist	#a0=list
@@ -102,6 +139,15 @@ main:	la $t0, schedv		#inicializacion
 #	lw $ra, 4($sp)
 #	addiu $sp, $sp, 4
 #	jr $ra
+
+catName: 
+	
+	
+
+
+end:		##Funcion para cerrar el programa
+	li $v0, 10	
+	syscall
 	
 
 
