@@ -83,20 +83,7 @@ main:	la $t0, schedv		#inicializacion
 	
 	
 	
-	
-#smalloc:
-#	lw $t0, slist		
-#	beqz $t0, sbrk
-#	move $v0, $t0
-#	lw $t0, 12($t0)
-#	sw $t0, slist
-#	jr $ra
-	
-	#sbrk: 
-		#li $a0, 16 	#node size fixed 4 word
-		#li $v0, 9
-		#syscall		#return node address in v0
-		#jr $ra
+
 	
 #sfree: 		#en $a0 debe estar la direccion de memoria del nodo a eliminar	
 #	lw $t0, slist
@@ -118,20 +105,38 @@ newcategory:
 #	bnez $t0, newcategory_end
 #	sw $v0, wclist 	#update working list if was NULL
 
-getblock: 
+getblock: 		##funcion para obtener un bloque
 	addi $sp, $sp, -4
 	sw $ra, 4($sp)		#estoy guardando la 2da direcc de retorno en sp, para volver a func new category
-	li $v0, 4
-	syscall
+	li $v0, 4		
+	syscall			#syscall para imprimir msg de catName
 	jal smalloc
 	move $a0, $v0
-	li $a1, 16
-	li $v0, 8
-	syscall
-	move $v0, $a0
-	lw $ra, 4($sp)
-	addi $sp, $sp, 4
+#	li $a1, 16
+#	li $v0, 8
+#	syscall
+#	move $v0, $a0
+#	lw $ra, 4($sp)
+#	addi $sp, $sp, 4
+#	jr $ra
+	
+	
+smalloc:		##funcion para obtener espacio de memoria, ya sea de la lista de liberados o del heap
+	lw $t0, slist		#"puntero"-> en la 1er vuelta es null	
+	beqz $t0, sbrk
+	move $v0, $t0		#si !null, copio en v0 la direcc de slist cargada en t0 (le estoy dando la direcc de un nodo liberado)
+	lw $t0, 12($t0)
+	sw $t0, slist
 	jr $ra
+	
+	sbrk: 		##esto se usa para pedir memoria en el heap, solo si no tengo nodos disponibles en la lista de liberados
+		li $a0, 16 	#node size fixed 4 word	##nodo de tama;o fijo en 16 bytes, o sea 4 word
+		li $v0, 9
+		syscall		#return node address in v0	##devuelve en v0 la direcc de espacio de memoria pedido en el heap
+		jr $ra		#vuelve a la direcc guardada en ra (move $a0, $v0 de funcion getblock)
+		
+		
+		
 	
 #newcategory_end: 
 #	li $v0, 0 	#return success
@@ -139,7 +144,6 @@ getblock:
 #	addiu $sp, $sp, 4
 #	jr $ra
 
-catName: 
 	
 	
 
