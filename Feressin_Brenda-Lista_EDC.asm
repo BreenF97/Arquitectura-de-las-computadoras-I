@@ -97,10 +97,10 @@ newcategory:
 	sw $ra, 4($sp)	#No retrocede el puntero! Guardo ra en la direcc inicial (-4+4). Evito sobreesc.xq sp apunta a la sig direcc
 	la $a0, catName		#input category name	##cargo la direcc de catName (msg)
 	jal getblock
-#	move $a2, $v0 	#a2= *char to category name
-#	la $a0, cclist	#a0=list
-#	li $a1, 0 	#a1=null
-#	jal addnode
+	move $a2, $v0 	#a2= *char to category name	##a2 ahora va a ser puntero al nombre de la categoria
+	la $a0, cclist	#a0=list	##cargo en a0 la direcc de cclist, que es puntero a lista de categ
+	li $a1, 0 	#a1=null	
+	jal addnode
 #	lw $t0, wclist
 #	bnez $t0, newcategory_end
 #	sw $v0, wclist 	#update working list if was NULL
@@ -111,31 +111,66 @@ getblock: 		##funcion para obtener un bloque
 	li $v0, 4		
 	syscall			#syscall para imprimir msg de catName
 	jal smalloc
-	move $a0, $v0
-#	li $a1, 16
-#	li $v0, 8
-#	syscall
-#	move $v0, $a0
-#	lw $ra, 4($sp)
-#	addi $sp, $sp, 4
-#	jr $ra
+	move $a0, $v0		#la direcc del bloq que tengo en v0 la copio a a0
+	li $a1, 16		#syscall p leer input_string. En a1 reservo sizeMax p el buffer en mem q la almacenara (incluyendo \0)
+	li $v0, 8		
+	syscall			#Devuelve la cadena almacenada en la direcc guardada en a0 (requiere tener una direcc en a0 este syscall)
+	move $v0, $a0		#Copio en v0 la direcc guardada en a0
+	lw $ra, 4($sp)		#Recupero la 2da direcc de retorno en ra, que me permitira volver a func new category
+	addi $sp, $sp, 4
+	jr $ra			#vuelvo a funcion new category (renglon move $a2, $v0), con string almacenado en direcc cargada en v0
 	
 	
 smalloc:		##funcion para obtener espacio de memoria, ya sea de la lista de liberados o del heap
 	lw $t0, slist		#"puntero"-> en la 1er vuelta es null	
 	beqz $t0, sbrk
-	move $v0, $t0		#si !null, copio en v0 la direcc de slist cargada en t0 (le estoy dando la direcc de un nodo liberado)
-	lw $t0, 12($t0)
-	sw $t0, slist
-	jr $ra
+	move $v0, $t0		#si !null, copio en v0 la direcc de slist cargada en t0 (le estoy dando la direcc de un bloq liberado)
+	lw $t0, 12($t0)		#Sobreescribo t0 con el valor almacenado en la dir t0+12 (o sea 4to campo del bloqfree q va a usar). 
+				#Este campo contiene la direcc del sig bloq free. x ende, slist ahora apunta al sig bloqfree, 
+				#"sacando" al 1ero de la lista free para su uso.
+	sw $t0, slist		#Guardo en slist el nuevo 1er bloq free, actualizando el puntero
+	jr $ra		#vuelvo a la direcc en ra (move $a0, $v0 de funcion getblock), con direcc en v0 de un bloq reutilizado
 	
-	sbrk: 		##esto se usa para pedir memoria en el heap, solo si no tengo nodos disponibles en la lista de liberados
+	sbrk: 		##esto se usa para pedir memoria en el heap, solo si no tengo bloqs disponibles en la lista de liberados
 		li $a0, 16 	#node size fixed 4 word	##nodo de tama;o fijo en 16 bytes, o sea 4 word
 		li $v0, 9
 		syscall		#return node address in v0	##devuelve en v0 la direcc de espacio de memoria pedido en el heap
-		jr $ra		#vuelve a la direcc guardada en ra (move $a0, $v0 de funcion getblock)
+		jr $ra		#vuelve a la direcc guardada en ra (move $a0, $v0 de funcion getblock), con direcc en v0 de mem heap
 		
+
+addnode:
+	addi $sp, $sp, -8
+	sw $ra, 8($sp)
+	sw $a0, 4($sp)
+	jal smalloc
+	sw $a1, 4($v0)	#set node content
+	sw $a2, 8($v0)
+	lw $a0, 4($sp)
+	lw $t0, ($a0)	#first node address
+	beqz $t0, addnode_empty_list
+	
+	addnode_to_end:
+		lw $t1, ($t0)	#last node address
+		#update prev and next pointers of new node
+		sw $t1, 0($v0)
+		sw $t0, 12($v0)
+		#update prev and first node to new node
+		sw $v0, 12($t1)
+		sw $v0, 0($t0)
+		j addnode_exit
+	
+	addnode_empty_list:
+		sw $v0, ($a0)
+		sw $v0, 0($v0)
+		sw $v0, 12($v0)
 		
+	addnode_exit:
+		lw $ra, 8($sp)
+		addi $sp, $sp, 8
+		jr $ra
+				
+				
+								
 		
 	
 #newcategory_end: 
