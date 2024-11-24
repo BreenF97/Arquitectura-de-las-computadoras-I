@@ -1,4 +1,4 @@
-		###CODIGO DEL PDF, PARA IR AGREGANDO
+			###CODIGO DEL PDF, PARA IR AGREGANDO
 	
 	.data
 slist:	.word 0		#puntero - lo utilizan las funciones smalloc y sfree
@@ -18,13 +18,16 @@ menu:	.ascii "Colecciones de objetos categorizados\n"
 	.ascii "0-Salir\n"
 	.asciiz "Ingrese la opcion deseada: "
 	
-error:	.asciiz "Error: "
+#error:	.asciiz "Error: "
 return:	.asciiz "\n"
 catName:.asciiz "\nIngrese el nombre de una categoria: "
 selCat: .asciiz "\nSe ha seleccionado la categoria: "
 idObj:	.asciiz "\nIngrese el ID del objeto a eliminar: "
 objName:.asciiz "\nIngrese el nombre de un objeto: "
 success:.asciiz "La operacion se realizo con exito\n\n"	
+
+error201:	.asciiz "Error 201: No hay categorias disponibles."
+error202:	.asciiz "Error 202: Solo hay una categoria disponible."
 
 .text
 
@@ -74,7 +77,7 @@ main:
 	bne $t1, $t2, no_nextcategory
 	jal nextcategory
 
-#	no_nextcategory
+	no_nextcategory:
 
 #	li $t2, 3
 #	beq $t1, $t2, prevcategory
@@ -88,6 +91,11 @@ main:
 #	beq $t1, $t2, listobjects
 #	li $t2, 8
 #	beq $t1, $t2, delobject
+
+#imprimo espacio \n	
+	li $v0, 4
+	la $a0, return
+	syscall
 
 	j main		#loop para volver a ejecutar desde main.
 	
@@ -197,6 +205,46 @@ addnode:
 	
 
 
+nextcategory:
+
+	addiu $sp, $sp, -4	                    
+	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
+	la $a0, wclist		#cargo la direcc de wclist(direcc del puntero que apunta a la categ en curso)
+	beqz $a0, error_201
+	lw $t0, ($a0)		#cargo el contenido de wclist(direcc de la categ en curso)
+	lw $t1, 12($t0)		#cargo el contenido del 4to campo de la cat en curso (direcc de sig nodo)
+	beq $t0, $t1, error_202
+	sw $t1, wclist		#Actualizo wclist: guardo el contenido de t1 (direcc del sig nodo) Ahora apunta al sig.
+	lw $t2, 8($t1)		#cargo el cont del 3er campo del ahora actual nodo (p_dato:nombre cat)
+	la $a0, selCat		#"se ha selecc la cat: "
+	li $v0, 4		
+	syscall			#syscall para imprimir msg de selCat
+	la $a0, ($t2)		#"input_categ"
+	li $v0, 4		
+	syscall	
+	
+	end_nextcategory: 
+		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_nextcategory)
+		addiu $sp, $sp, 4
+		jr $ra
+	
+error_201:
+	#Imprimir mensaje: Error 201: No hay categorias disponibles.
+	li $v0, 4
+	la $a0, error201
+	syscall
+	j end_nextcategory
+		
+error_202: 
+	#Imprimir mensaje: Error 202: Solo hay una categoria disponible.
+	li $v0, 4
+	la $a0, error202
+	syscall
+	j end_nextcategory
+		
+		
+	
+		
 	
 	
 
