@@ -302,25 +302,6 @@ listcategory:
 		# repetir
 	
 		j loop_list_cat
-	
-	#lw $t0, 12($a1) 	#cargo el contenido del 4to campo del 1er nodo (direcc de sig nodo)
-	#beq $t0, $a1, end_listcategory 
-	
-	#move $t2, $a1		#hago una copia para no modificar 
-	
-	#lw $t0, ($t2)		#cargo el contenido de cclist(direcc del 1er nodo categ)
-	#beqz $t0, error_301
-	
-	#lw $t1, 12($t0)		#cargo el contenido del 4to campo del 1er nodo (direcc de sig nodo)
-	#lw $t3, 8($t0)		#cargo el nombre de la categ
-	#beq $t0, $t1, print_listcategory
-	
-	
-	#print_listcategory:
-	#	sw $t1, cclist		#actualizo cclist para pasar al sig nodo
-	#	li $v0, 4
-	#	la $a0, ($t3)	#"input_categ"
-	#	syscall
 			
 	end_listcategory:
 		
