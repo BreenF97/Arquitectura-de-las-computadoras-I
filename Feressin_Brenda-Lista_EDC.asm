@@ -26,9 +26,12 @@ idObj:	.asciiz "\nIngrese el ID del objeto a eliminar: "
 objName:.asciiz "\nIngrese el nombre de un objeto: "
 success:.asciiz "La operacion se realizo con exito\n\n"	
 
+wc: 	.asciiz "> "
+
 error201:	.asciiz "Error 201: No hay categorias disponibles."
 error202:	.asciiz "Error 202: Solo hay una categoria disponible."
 error301: 	.asciiz "Error 301: No hay categorias disponibles para listar."
+error401: 	.asciiz "Error 401: No hay categorias disponibles para borrar."
 
 .text
 
@@ -40,9 +43,9 @@ error301: 	.asciiz "Error 301: No hay categorias disponibles para listar."
 	la $t1, prevcategory
 	sw $t1, 8($t0)
 	la $t1, listcategory
-#	sw $t1, 12($t0)
-#	la $t1, delcategory
-#	sw $t1, 16($t0)
+	sw $t1, 12($t0)
+	la $t1, delcategory
+	sw $t1, 16($t0)
 #	la $t1, newobject
 #	sw $t1, 20($t0)
 #	la $t1, listobjects
@@ -89,8 +92,11 @@ main:
 	jal listcategory
 	
 	no_listcategory:
-#	li $t2, 5
-#	beq $t1, $t2, delcategory
+	li $t2, 5
+	bne $t1, $t2, no_delcategory
+	jal delcategory
+	
+	no_delcategory:
 #	li $t2, 6
 #	beq $t1, $t2, newobject
 #	li $t2, 7
@@ -111,11 +117,7 @@ main:
 	
 
 	
-#sfree: 		#en $a0 debe estar la direccion de memoria del nodo a eliminar	
-#	lw $t0, slist
-#	sw $t0, 12($a0)
-#	sw $a0, slist 	#a0 node adrdress in unused list
-#	jr $ra
+
 
 
 
@@ -270,52 +272,127 @@ prevcategory:
 
 
 listcategory:
-	#Se aconseja debido a lo primitivo de la consola mostrar con un símbolo “>” la categoría seleccionada en curso. 
-	#Si no hay categorías se informará el error (301).
+	
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
-	
+	li $v0,4
+	la $a0, return
+	syscall			#imprimo un salto de linea
+	lw $t1, wclist		#cargo la direcc del nodo de la categ en curso
 	lw $s0, cclist		#cargo el contenido de cclist(direcc al primer nodo de la lista de categ)
 	beqz $s0, error_301	#si es null, entonces no hay categorias, error301
+	move $t0, $s0		#hago una copia. s0 sera la referencia contra la cual chequear y t0 la variable q cambia en c/ iterac
 	
-	move $t0, $s0
-	
-	loop_list_cat:
-	
-		# imprimir el primer nodo
-	
+	loop_list_cat:	#si es la categ selecc, imprimir ">"
+		bne $t0, $t1, no_seleccionada	#sin no es wc, sigo con el loop. Si lo es, antes de seguir le imprimo x delante un ">"
 		li $v0, 4
-		lw $a0, 8($t0)
+		la $a0, wc
 		syscall
-	
+		
+		no_seleccionada:
+			li $v0, 4
+			lw $a0, 8($t0)
+			syscall			# imprimir el primer nodo
+			li $v0, 4
+			la $a0, return
+			syscall
+			lw $t0, 12($t0)		#avanzo t0 al siguiente nodo
+			beq $t0, $s0, end_listcategory	# chequeo si termina el loop viendo si t0 es == s0
+			j loop_list_cat			# repetir hasta salir en el renglon de arriba
+				
+	end_listcategory:
+		li $v0,4
 		la $a0, return
 		syscall
-		
-		#avanzo t0 al siguiente nodo
-	
-		lw $t0, 12($t0)
-	
-		# chequear si terminamos viendo si t0 es == s0
-	
-		beq $t0, $s0, end_listcategory
-	
-		# repetir
-	
-		j loop_list_cat
-			
-	end_listcategory:
-		
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_listcategory)
 		addiu $sp, $sp, 4
 		jr $ra	
 	
+error_301:
+	#Imprimir mensaje: Error 301: No hay categorias disponibles para listar.
+	li $v0, 4
+	la $a0, error301
+	syscall
+	j end_listcategory
+
+
+
+delcategory:
 	
-	error_301:
-		#Imprimir mensaje: Error 301: No hay categorias disponibles para listar.
-		li $v0, 4
-		la $a0, error301
-		syscall
-		j end_listcategory
+	#Si lista de obj de cat selecc = 0 ->borrar solo la cat y seleccionar como cat automáticamente la sig si existe.
+	#Si no existe cat sig, deberá nulificar los punteros necesarios
+	#Si !0, 1ero borrar todos los obj, devolviendo la memoria, y luego borrar la cat como se indico antes
+
+	addiu $sp, $sp, -4	                    
+	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
+	lw $a0, wclist		#cargo el contenido de wclist(direcc al nodo seleccionado de la lista de categ)
+	beqz $a0, error_401	#si es null, entonces no hay categorias, error401
+	la $a1, wclist
+	la $s0, cclist 		#direcc de cclist
+	lw $a2, ($s0)		#contenido de cclist
+	#si cclist=wclist, actualizo cclist tambien
+
+# a0: node address to delete	##direccion del nodo a eliminar, guardado en wclist
+# a1: list address where node is deleted	##direcc de la lista donde se elimino el nodo -> wclist
+delnode:
+	addi $sp, $sp, -8
+	sw $ra, 8($sp)		#guardo la direcc para desp volver al menu
+	
+	sw $a0, 4($sp)		#guardo el argumento tmb (direcc del nodo a eliminar)
+	lw $a0, 8($a0)		#get block address ##obtener la dirección del bloque (de nombre-dato)
+	jal sfree		#free block
+	lw $a0, 4($sp)		#restore argument a0	#restauro la direcc del nodo a eliminar
+	lw $t0, 12($a0)		#get address to next node of a0 node ##Obtener la direcc del nodo sig al q se iba a eliminar
+	
+	beq $a0, $t0, delnode_point_self	#es un unico nodo que apunta a si mismo
+	lw $t1, 0($a0) 		#get address to prev node #cargo en t1 el cont del 1er campo (direcc del nodo ant)
+	sw $t1, 0($t0)		#guardo en el 1er campo del nodo sig(p_ant) la direcc del nodo ant.
+	sw $t0, 12($t1)		#guardo en el uilt campo del nodo ant (p_sig) la direcc del nodo sig
+	lw $t1, 0($a1)	#??????????????get address to first node again #obtener la direcc del 1er nodo nuevamente. ???????
+	
+	bne $a0, $t1, delnode_exit	#si el nodo a eliminar ! del sig nodo, paso a exit
+	
+	bne $a0, $a2, no_actualizar_cclist
+	sw $t0, ($s0)	#Actualizo cclist si el nodo a borrar es el primer nodo de la lista categ
+	
+	no_actualizar_cclist:
+	sw $t0, ($a1)		#list point to next node #lista apunta al siguiente nodo
+	j delnode_exit
+	
+	delnode_point_self:
+	
+		sw $0, ($s0)	#Actualizo cclist
+		sw $zero, ($a1)	#only one node ##si es el unico nodo, la lista cat queda vacia, por lo tanto wclist =null\
+		
+		
+	delnode_exit:
+		jal sfree
+		lw $ra, 8($sp)
+		addi $sp, $sp, 8	#recupero la direcc para volver 
+		jr $ra
+
+
+
+
+sfree: 		#en $a0 debe estar la direccion de memoria del nodo a eliminar	
+	lw $t0, slist		#cargo el contenido de slist(direcc de mem de 1er objeto de lista de eliminados)
+	sw $t0, 12($a0)		#En el ultimo campo del nodo a eliminar, guardo la direcc de mem de 1er obj lista elim. 
+	sw $a0, slist 	#a0 node adrdress in unused list #direcc de nodo a0 en lista de no utilizados. Slist apunta a nodo a borrar
+	jr $ra		#vuelvo al menu
+
+
+error_401:
+	#Imprimir mensaje: Error 401: No hay categorias disponibles para borrar.
+	li $v0, 4
+	la $a0, error401
+	syscall
+	j end_delcategory
+
+
+end_delcategory: 
+	lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_nextcategory o no_prevcategory)
+	addiu $sp, $sp, 4
+	jr $ra
 
 
 
