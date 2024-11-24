@@ -101,8 +101,8 @@ newcategory:
 	la $a0, cclist	#a0=list	##cargo en a0 la direcc de cclist, que es puntero a lista de categ
 	li $a1, 0 	#a1=null	
 	jal addnode
-#	lw $t0, wclist
-#	bnez $t0, newcategory_end
+	lw $t0, wclist		#cargo en t0 el contenido de wclist- puntero a la categ selecc
+	bnez $t0, newcategory_end	#si wclist !null, salto
 #	sw $v0, wclist 	#update working list if was NULL
 
 getblock: 		##funcion para obtener un bloque
@@ -129,55 +129,55 @@ smalloc:		##funcion para obtener espacio de memoria, ya sea de la lista de liber
 				#Este campo contiene la direcc del sig bloq free. x ende, slist ahora apunta al sig bloqfree, 
 				#"sacando" al 1ero de la lista free para su uso.
 	sw $t0, slist		#Guardo en slist el nuevo 1er bloq free, actualizando el puntero
-	jr $ra		#vuelvo a la direcc en ra (move $a0, $v0 de funcion getblock), con direcc en v0 de un bloq reutilizado
+	jr $ra		#vuelvo a la direcc en ra, con direcc en v0 de un bloq reutilizado
 	
 	sbrk: 		##esto se usa para pedir memoria en el heap, solo si no tengo bloqs disponibles en la lista de liberados
 		li $a0, 16 	#node size fixed 4 word	##nodo de tama;o fijo en 16 bytes, o sea 4 word
 		li $v0, 9
 		syscall		#return node address in v0	##devuelve en v0 la direcc de espacio de memoria pedido en el heap
-		jr $ra		#vuelve a la direcc guardada en ra (move $a0, $v0 de funcion getblock), con direcc en v0 de mem heap
+		jr $ra		#vuelve a la direcc guardada en ra, con direcc en v0 de mem heap
 		
 
 addnode:
-	addi $sp, $sp, -8
+	addi $sp, $sp, -8	#preservo ra en la pila, para poder volver a func new category
 	sw $ra, 8($sp)
-	sw $a0, 4($sp)
-	jal smalloc
-	sw $a1, 4($v0)	#set node content
-	sw $a2, 8($v0)
-	lw $a0, 4($sp)
-	lw $t0, ($a0)	#first node address
-	beqz $t0, addnode_empty_list
+	sw $a0, 4($sp)		#tambien preservo la direcc cclist (puntero a lista circ)
+	jal smalloc		#salto a smalloc para pedir memoria en el heap o un bloque liberado, para crear el nodo categoria
+	sw $a1, 4($v0)	#set node content	##vuelvo de smalloc con direcc bloq en v0. En el 2do campo, guardo a1=null
+	sw $a2, 8($v0)		#En el 3er campo, puntero al nombre de la categoria
+	lw $a0, 4($sp)		#devuelvo en a0 la direcc cargada en el sp (cclist)
+	lw $t0, ($a0)	#first node address	##carga en t0 el cont de a0 (cclist). En t0 estoy cargando la direcc del 1er nodo
+	beqz $t0, addnode_empty_list	##si cclist=null, salto. Si !null,o sea apunta a un nodo, sigo
 	
-	addnode_to_end:
-		lw $t1, ($t0)	#last node address
-		#update prev and next pointers of new node
-		sw $t1, 0($v0)
-		sw $t0, 12($v0)
-		#update prev and first node to new node
-		sw $v0, 12($t1)
-		sw $v0, 0($t0)
+	addnode_to_end:		#funcion para agregar nodo por detras
+		lw $t1, ($t0)	#last node address ##carga en t1 el 1er campo del 1er nodo, o sea la direcc del nodo ant al 1ero (ult nodo)
+				#Necesito ir hasta el ult nodo xq la funcion agrega nodos al final (t1 es el ult nodo antes de agregar)
+		#update prev and next pointers of new node ##actualizo p_sig y p_ant del nodo cargado
+		sw $t1, 0($v0)	#en el 1er campo del nodo nuevo (p_ant), cargo la direcc del que era nodo ant y ahora va a ser anteult.
+		sw $t0, 12($v0)	#en el 4to campo del nodo nuevo (p_sig), cargo la direcc a la que apunta cclist (1er nodo)
+		#update prev and first node to new node ##actualizo 1er nodo y nodo ant al nodo actual
+		sw $v0, 12($t1)	#En el ahora anteult, cargo en su 4to campo (p_sig) la direcc del nuevo nodo ultimo
+		sw $v0, 0($t0)	#En el 1er campo del 1er nodo (p_ant), cargo la direcc del nuevo nodo ultimo
 		j addnode_exit
 	
-	addnode_empty_list:
-		sw $v0, ($a0)
-		sw $v0, 0($v0)
-		sw $v0, 12($v0)
+	addnode_empty_list:	#funcion para agregar nodo a lista vacia
+		sw $v0, ($a0)	#guardo en la direccion de cclist, almacenada en a0, la direcc del bloque a usar (v0)
+		sw $v0, 0($v0)	#guardo en el 1er campo del bloque la direcc del propio bloque
+		sw $v0, 12($v0)	#lo mismo para el ultimo campo del bloque, apunta a si mismo. Sigue a func addnode_exit
 		
 	addnode_exit:
-		lw $ra, 8($sp)
+		lw $ra, 8($sp)		#recupero de sp la direcc para retornar a func new category (renglon lw $t0, wclist)
 		addi $sp, $sp, 8
-		jr $ra
-				
-				
-								
-		
+		jr $ra			#vuelvo con un bloque en v0 inicializado(p_ant, p_obj, p_dato, p_sig) 
+					#Si el el 1er nodo = ademas, con cclist apuntandolo
+					#si no lo es = ademas, con el nodo previo y anterior actualizado apuntando este bloque v0
 	
-#newcategory_end: 
-#	li $v0, 0 	#return success
-#	lw $ra, 4($sp)
-#	addiu $sp, $sp, 4
-#	jr $ra
+	
+newcategory_end: 
+	li $v0, 0 	#return success	##cargo 0 en v0 (null)
+	lw $ra, 4($sp)		#recupero la direcc para volver al menu?????
+	addiu $sp, $sp, 4
+	jr $ra			#vuelvo a ??? con nodo nuevo inicializado y apuntando correctamente, con puntero cat en curso y v0=null
 
 	
 	
