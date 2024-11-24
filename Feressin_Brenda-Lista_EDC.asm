@@ -28,7 +28,7 @@ success:.asciiz "La operacion se realizo con exito\n\n"
 
 .text
 
-main:	la $t0, schedv		#inicializacion
+	la $t0, schedv		#inicializacion
 	la $t1, newcategory	#cargo c/ direcc del menu, y la guardo en el space schedv
 	sw $t1, 0($t0)
 #	la $t1, nextcategory
@@ -46,7 +46,7 @@ main:	la $t0, schedv		#inicializacion
 #	la $t1, delobject
 #	sw $t1, 28($t0)
 	
-	
+main: 	
 #Imprimo menu
 	
 	li $v0, 4
@@ -59,13 +59,23 @@ main:	la $t0, schedv		#inicializacion
 	syscall
 	move $t1, $v0	#Lo paso a t1 porque al v0 lo voy a estar pisando constantemente con syscall seguro
 	
+	
+#VALIDAR QUE EL DATO ESTE ENTRE 1 Y 8 PARA QUE NO ME TIRE ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	
 #Hago una comparacion entre el input del usuario y los nros del menu para saber a que funcion salto.
 
 	beqz $t1, end
 	li $t2, 1
-	beq $t1, $t2, newcategory
-#	li $t2, 2
-#	beq $t1, $t2, nextcategory
+	bne $t1, $t2, no_newcategory	#Si no es, salta a "NO ES..." Si es, continua al siguiente renglon 
+	jal newcategory			#y salta a la funcion
+	
+	no_newcategory:			
+	li $t2, 2
+	bne $t1, $t2, no_nextcategory
+	jal nextcategory
+
+#	no_nextcategory
+
 #	li $t2, 3
 #	beq $t1, $t2, prevcategory
 #	li $t2, 4
@@ -78,6 +88,8 @@ main:	la $t0, schedv		#inicializacion
 #	beq $t1, $t2, listobjects
 #	li $t2, 8
 #	beq $t1, $t2, delobject
+
+	j main		#loop para volver a ejecutar desde main.
 	
 	
 	
@@ -90,37 +102,9 @@ main:	la $t0, schedv		#inicializacion
 #	sw $t0, 12($a0)
 #	sw $a0, slist 	#a0 node adrdress in unused list
 #	jr $ra
-	
-	
-newcategory:
-	addiu $sp, $sp, -4	#Stack pointer crece decrec. Al restarle 4, me muevo -4 bytes a la sig direcc, a la cual apuntara sp                         
-	sw $ra, 4($sp)	#No retrocede el puntero! Guardo ra en la direcc inicial (-4+4). Evito sobreesc.xq sp apunta a la sig direcc
-	la $a0, catName		#input category name	##cargo la direcc de catName (msg)
-	jal getblock
-	move $a2, $v0 	#a2= *char to category name	##a2 ahora va a ser puntero al nombre de la categoria
-	la $a0, cclist	#a0=list	##cargo en a0 la direcc de cclist, que es puntero a lista de categ
-	li $a1, 0 	#a1=null	
-	jal addnode
-	lw $t0, wclist		#cargo en t0 el contenido de wclist- puntero a la categ selecc
-	bnez $t0, newcategory_end	#si wclist !null, salto
-#	sw $v0, wclist 	#update working list if was NULL
 
-getblock: 		##funcion para obtener un bloque
-	addi $sp, $sp, -4
-	sw $ra, 4($sp)		#estoy guardando la 2da direcc de retorno en sp, para volver a func new category
-	li $v0, 4		
-	syscall			#syscall para imprimir msg de catName
-	jal smalloc
-	move $a0, $v0		#la direcc del bloq que tengo en v0 la copio a a0
-	li $a1, 16		#syscall p leer input_string. En a1 reservo sizeMax p el buffer en mem q la almacenara (incluyendo \0)
-	li $v0, 8		
-	syscall			#Devuelve la cadena almacenada en la direcc guardada en a0 (requiere tener una direcc en a0 este syscall)
-	move $v0, $a0		#Copio en v0 la direcc guardada en a0
-	lw $ra, 4($sp)		#Recupero la 2da direcc de retorno en ra, que me permitira volver a func new category
-	addi $sp, $sp, 4
-	jr $ra			#vuelvo a funcion new category (renglon move $a2, $v0), con string almacenado en direcc cargada en v0
-	
-	
+
+
 smalloc:		##funcion para obtener espacio de memoria, ya sea de la lista de liberados o del heap
 	lw $t0, slist		#"puntero"-> en la 1er vuelta es null	
 	beqz $t0, sbrk
@@ -136,6 +120,44 @@ smalloc:		##funcion para obtener espacio de memoria, ya sea de la lista de liber
 		li $v0, 9
 		syscall		#return node address in v0	##devuelve en v0 la direcc de espacio de memoria pedido en el heap
 		jr $ra		#vuelve a la direcc guardada en ra, con direcc en v0 de mem heap
+
+	
+	
+newcategory:
+	addiu $sp, $sp, -4	#Stack pointer crece decrec. Al restarle 4, me muevo -4 bytes a la sig direcc, a la cual apuntara sp                         
+	sw $ra, 4($sp)	#No retrocede el puntero! Guardo ra en la direcc inicial (-4+4). Evito sobreesc.xq sp apunta a la sig direcc
+	la $a0, catName		#input category name	##cargo la direcc de catName (msg)
+	jal getblock
+	move $a2, $v0 	#a2= *char to category name	##a2 ahora va a ser puntero al nombre de la categoria
+	la $a0, cclist	#a0=list	##cargo en a0 la direcc de cclist, que es puntero a lista de categ
+	li $a1, 0 	#a1=null	
+	jal addnode
+	lw $t0, wclist		#cargo en t0 el contenido de wclist- puntero a la categ selecc
+	bnez $t0, newcategory_end	#si wclist !null, salto
+	sw $v0, wclist 	#update working list if was NULL	##actualizar wclist si es null, p/q apunte a v0 (nodo actual) y sigo
+	
+	newcategory_end: 
+		li $v0, 0 	#return success	##cargo 0 en v0 (null)
+		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_newcategory)
+		addiu $sp, $sp, 4
+		jr $ra			#vuelvo con new nodo inicializado y apuntando bien, con puntero categ en curso y v0=null
+
+
+
+getblock: 		##funcion para obtener un bloque
+	addi $sp, $sp, -4
+	sw $ra, 4($sp)		#estoy guardando la 2da direcc de retorno en sp, para volver a func new category
+	li $v0, 4		
+	syscall			#syscall para imprimir msg de catName
+	jal smalloc
+	move $a0, $v0		#la direcc del bloq que tengo en v0 la copio a a0
+	li $a1, 16		#syscall p leer input_string. En a1 reservo sizeMax p el buffer en mem q la almacenara (incluyendo \0)
+	li $v0, 8		
+	syscall			#Devuelve la cadena almacenada en la direcc guardada en a0 (requiere tener una direcc en a0 este syscall)
+	move $v0, $a0		#Copio en v0 la direcc guardada en a0
+	lw $ra, 4($sp)		#Recupero la 2da direcc de retorno en ra, que me permitira volver a func new category
+	addi $sp, $sp, 4
+	jr $ra			#vuelvo a funcion new category (renglon move $a2, $v0), con string almacenado en direcc cargada en v0
 		
 
 addnode:
@@ -173,14 +195,13 @@ addnode:
 					#si no lo es = ademas, con el nodo previo y anterior actualizado apuntando este bloque v0
 	
 	
-newcategory_end: 
-	li $v0, 0 	#return success	##cargo 0 en v0 (null)
-	lw $ra, 4($sp)		#recupero la direcc para volver al menu?????
-	addiu $sp, $sp, 4
-	jr $ra			#vuelvo a ??? con nodo nuevo inicializado y apuntando correctamente, con puntero cat en curso y v0=null
+
 
 	
 	
+
+
+
 
 
 end:		##Funcion para cerrar el programa
