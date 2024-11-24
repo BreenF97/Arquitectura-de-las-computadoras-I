@@ -1,4 +1,4 @@
-		###CODIGO DEL PDF, PARA IR AGREGANDO
+			###CODIGO DEL PDF, PARA IR AGREGANDO
 	
 	.data
 slist:	.word 0		#puntero - lo utilizan las funciones smalloc y sfree
@@ -274,36 +274,67 @@ listcategory:
 	#Si no hay categorías se informará el error (301).
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
-	la $a1, cclist		#cargo la direcc de cclist(direcc del puntero que apunta a la lista de categ)
-	move $t2, $a1		#hago una copia para no modificar 
 	
-	lw $t0, ($t2)		#cargo el contenido de cclist(direcc del 1er nodo categ)
-	beqz $t0, error_301
-	lw $t1, ($t0)		#cargo el contenido del 4to campo del 1er nodo (direcc de sig nodo)
-	lw $t2, 8($t0)		#cargo el nombre de la categ
-	bne $t0, $t1, print_listcategory
+	lw $s0, cclist		#cargo el contenido de cclist(direcc al primer nodo de la lista de categ)
+	beqz $s0, error_301	#si es null, entonces no hay categorias, error301
 	
+	move $t0, $s0
 	
-	print_listcategory:
-		sw $t1, cclist		#actualizo cclist para pasar al sig nodo
+	loop_list_cat:
+	
+		# imprimir el primer nodo
+	
 		li $v0, 4
-		la $a0, ($t2)	#"input_categ"
+		lw $a0, 8($t0)
 		syscall
-			
 	
+		la $a0, return
+		syscall
 		
+		#avanzo t0 al siguiente nodo
+	
+		lw $t0, 12($t0)
+	
+		# chequear si terminamos viendo si t0 es == s0
+	
+		beq $t0, $s0, end_listcategory
+	
+		# repetir
+	
+		j loop_list_cat
+	
+	#lw $t0, 12($a1) 	#cargo el contenido del 4to campo del 1er nodo (direcc de sig nodo)
+	#beq $t0, $a1, end_listcategory 
+	
+	#move $t2, $a1		#hago una copia para no modificar 
+	
+	#lw $t0, ($t2)		#cargo el contenido de cclist(direcc del 1er nodo categ)
+	#beqz $t0, error_301
+	
+	#lw $t1, 12($t0)		#cargo el contenido del 4to campo del 1er nodo (direcc de sig nodo)
+	#lw $t3, 8($t0)		#cargo el nombre de la categ
+	#beq $t0, $t1, print_listcategory
+	
+	
+	#print_listcategory:
+	#	sw $t1, cclist		#actualizo cclist para pasar al sig nodo
+	#	li $v0, 4
+	#	la $a0, ($t3)	#"input_categ"
+	#	syscall
+			
 	end_listcategory:
+		
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_listcategory)
 		addiu $sp, $sp, 4
 		jr $ra	
 	
 	
-error_301:
-	#Imprimir mensaje: Error 301: No hay categorias disponibles para listar.
-	li $v0, 4
-	la $a0, error301
-	syscall
-	j end_listcategory
+	error_301:
+		#Imprimir mensaje: Error 301: No hay categorias disponibles para listar.
+		li $v0, 4
+		la $a0, error301
+		syscall
+		j end_listcategory
 
 
 
@@ -313,6 +344,7 @@ error_301:
 end:		##Funcion para cerrar el programa
 	li $v0, 10	
 	syscall
+
 	
 
 
