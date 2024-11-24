@@ -28,6 +28,7 @@ success:.asciiz "La operacion se realizo con exito\n\n"
 
 error201:	.asciiz "Error 201: No hay categorias disponibles."
 error202:	.asciiz "Error 202: Solo hay una categoria disponible."
+error301: 	.asciiz "Error 301: No hay categorias disponibles para listar."
 
 .text
 
@@ -37,8 +38,8 @@ error202:	.asciiz "Error 202: Solo hay una categoria disponible."
 	la $t1, nextcategory
 	sw $t1, 4($t0)
 	la $t1, prevcategory
-#	sw $t1, 8($t0)
-#	la $t1, listcategory
+	sw $t1, 8($t0)
+	la $t1, listcategory
 #	sw $t1, 12($t0)
 #	la $t1, delcategory
 #	sw $t1, 16($t0)
@@ -83,8 +84,11 @@ main:
 	jal prevcategory
 	
 	no_prevcategory:
-#	li $t2, 4
-#	beq $t1, $t2, listcategory
+	li $t2, 4
+	bne $t1, $t2, no_listcategory
+	jal listcategory
+	
+	no_listcategory:
 #	li $t2, 5
 #	beq $t1, $t2, delcategory
 #	li $t2, 6
@@ -261,9 +265,46 @@ prevcategory:
 	li $v0, 4		
 	syscall
 	j end_next_prev_category
+	
+	
+
+
+listcategory:
+	#Se aconseja debido a lo primitivo de la consola mostrar con un símbolo “>” la categoría seleccionada en curso. 
+	#Si no hay categorías se informará el error (301).
+	addiu $sp, $sp, -4	                    
+	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
+	la $a1, cclist		#cargo la direcc de cclist(direcc del puntero que apunta a la lista de categ)
+	move $t2, $a1		#hago una copia para no modificar 
+	
+	lw $t0, ($t2)		#cargo el contenido de cclist(direcc del 1er nodo categ)
+	beqz $t0, error_301
+	lw $t1, ($t0)		#cargo el contenido del 4to campo del 1er nodo (direcc de sig nodo)
+	lw $t2, 8($t0)		#cargo el nombre de la categ
+	bne $t0, $t1, print_listcategory
+	
+	
+	print_listcategory:
+		sw $t1, cclist		#actualizo cclist para pasar al sig nodo
+		li $v0, 4
+		la $a0, ($t2)	#"input_categ"
+		syscall
+			
+	
 		
+	end_listcategory:
+		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_listcategory)
+		addiu $sp, $sp, 4
+		jr $ra	
 	
 	
+error_301:
+	#Imprimir mensaje: Error 301: No hay categorias disponibles para listar.
+	li $v0, 4
+	la $a0, error301
+	syscall
+	j end_listcategory
+
 
 
 
