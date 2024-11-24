@@ -1,4 +1,4 @@
-			###CODIGO DEL PDF, PARA IR AGREGANDO
+		###CODIGO DEL PDF, PARA IR AGREGANDO
 	
 	.data
 slist:	.word 0		#puntero - lo utilizan las funciones smalloc y sfree
@@ -34,9 +34,9 @@ error202:	.asciiz "Error 202: Solo hay una categoria disponible."
 	la $t0, schedv		#inicializacion
 	la $t1, newcategory	#cargo c/ direcc del menu, y la guardo en el space schedv
 	sw $t1, 0($t0)
-#	la $t1, nextcategory
-#	sw $t1, 4($t0)
-#	la $t1, prevcategory
+	la $t1, nextcategory
+	sw $t1, 4($t0)
+	la $t1, prevcategory
 #	sw $t1, 8($t0)
 #	la $t1, listcategory
 #	sw $t1, 12($t0)
@@ -78,9 +78,11 @@ main:
 	jal nextcategory
 
 	no_nextcategory:
-
-#	li $t2, 3
-#	beq $t1, $t2, prevcategory
+	li $t2, 3
+	bne $t1, $t2, no_prevcategory
+	jal prevcategory
+	
+	no_prevcategory:
 #	li $t2, 4
 #	beq $t1, $t2, listcategory
 #	li $t2, 5
@@ -206,12 +208,11 @@ addnode:
 
 
 nextcategory:
-
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
 	la $a0, wclist		#cargo la direcc de wclist(direcc del puntero que apunta a la categ en curso)
-	beqz $a0, error_201
 	lw $t0, ($a0)		#cargo el contenido de wclist(direcc de la categ en curso)
+	beqz $t0, error_201
 	lw $t1, 12($t0)		#cargo el contenido del 4to campo de la cat en curso (direcc de sig nodo)
 	beq $t0, $t1, error_202
 	sw $t1, wclist		#Actualizo wclist: guardo el contenido de t1 (direcc del sig nodo) Ahora apunta al sig.
@@ -222,28 +223,44 @@ nextcategory:
 	la $a0, ($t2)		#"input_categ"
 	li $v0, 4		
 	syscall	
-	
-	end_nextcategory: 
-		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_nextcategory)
-		addiu $sp, $sp, 4
-		jr $ra
+
+end_next_prev_category: 
+	lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_nextcategory o no_prevcategory)
+	addiu $sp, $sp, 4
+	jr $ra	
 	
 error_201:
 	#Imprimir mensaje: Error 201: No hay categorias disponibles.
 	li $v0, 4
 	la $a0, error201
 	syscall
-	j end_nextcategory
+	j end_next_prev_category
 		
 error_202: 
 	#Imprimir mensaje: Error 202: Solo hay una categoria disponible.
 	li $v0, 4
 	la $a0, error202
 	syscall
-	j end_nextcategory
+	j end_next_prev_category
 		
-		
-	
+
+prevcategory:
+	addiu $sp, $sp, -4	                    
+	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
+	la $a0, wclist		#cargo la direcc de wclist(direcc del puntero que apunta a la categ en curso)
+	lw $t0, ($a0)		#cargo el contenido de wclist(direcc de la categ en curso)
+	beqz $t0, error_201
+	lw $t1, ($t0)		#cargo el contenido del 1er campo de la cat en curso (direcc de ant nodo)
+	beq $t0, $t1, error_202
+	sw $t1, wclist		#Actualizo wclist: guardo el contenido de t1 (direcc del ant nodo) Ahora apunta al ant.
+	lw $t2, 8($t1)		#cargo el cont del 3er campo del ahora actual nodo (p_dato:nombre cat)
+	la $a0, selCat		#"se ha selecc la cat: "
+	li $v0, 4		
+	syscall			#syscall para imprimir msg de selCat
+	la $a0, ($t2)		#"input_categ"
+	li $v0, 4		
+	syscall
+	j end_next_prev_category
 		
 	
 	
