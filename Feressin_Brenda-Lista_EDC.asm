@@ -41,7 +41,7 @@ error701: 	.asciiz "Error 701: No hay categorias ingresadas."
 
 	la $t0, schedv		#inicializacion
 	la $t1, newcategory	#cargo c/ direcc del menu, y la guardo en el space schedv
-	sw $t1, 0($t0)
+	sw $t1, 0($t0)		#en schedv guarde las direcc de las etiquetas de cada funcion
 	la $t1, nextcategory
 	sw $t1, 4($t0)
 	la $t1, prevcategory
@@ -79,45 +79,62 @@ main:
 ####CAMBIAR ESTA MANERA DE HACERLO!!!!! TENGO QUE USAR LA INICIALIZACION E IR ACCEDIENDO DESDE AHI!!!!!!!!
 
 	##PROVISORIOOOO!!!!
+	la $t0, schedv
 	beqz $t1, end
+	
 	li $t2, 1
 	bne $t1, $t2, no_newcategory	#Si no es, salta a "NO ES..." Si es, continua al siguiente renglon 
-	jal newcategory			#y salta a la funcion
+	lw $t0, 0($t0)			#en t0 piso con la direcc de la etiqueta de la funcion que voy a llamar
+	jalr $t0			#y salta a la funcion
 	
-	no_newcategory:			
+	no_newcategory:		
+	addi $t0, $t0, 4	
 	li $t2, 2
 	bne $t1, $t2, no_nextcategory
-	jal nextcategory
+	lw $t0, 0($t0)
+	jalr $t0
 
 	no_nextcategory:
+	addi $t0, $t0, 4
 	li $t2, 3
 	bne $t1, $t2, no_prevcategory
-	jal prevcategory
+	lw $t0, 0($t0)
+	jalr $t0
 	
 	no_prevcategory:
+	addi $t0, $t0, 4
 	li $t2, 4
 	bne $t1, $t2, no_listcategory
-	jal listcategory
+	lw $t0, 0($t0)
+	jalr $t0
 	
 	no_listcategory:
+	addi $t0, $t0, 4
 	li $t2, 5
 	bne $t1, $t2, no_delcategory
-	jal delcategory
+	lw $t0, 0($t0)
+	jalr $t0
 	
 	no_delcategory:
+	addi $t0, $t0, 4
 	li $t2, 6
 	bne $t1, $t2, no_newobject
-	jal newobject
+	lw $t0, 0($t0)
+	jalr $t0
 	
 	no_newobject:
+	addi $t0, $t0, 4
 	li $t2, 7
 	bne $t1, $t2, no_listobjects
-	jal listobjects
+	lw $t0, 0($t0)
+	jalr $t0
 	
 	no_listobjects:
+	addi $t0, $t0, 4
 	li $t2, 8
 	bne $t1, $t2, no_delobject
-	jal delobject
+	lw $t0, 0($t0)
+	jalr $t0
 	
 	no_delobject:
 
@@ -462,7 +479,7 @@ newobject:	#anexar un objeto a la categoria seleccionada en curso
 	beqz $s0, error_501	#wclist=null
 	la $a0, objName		#cargo la direcc de objName (msg) "\nIngrese el nombre de un objeto: "
 	jal getblock		#de este voy a volver con el input nombre obj en la direcc de v0
-	move $a2, $v0 	#a2= *char to category name	##a2 ahora va a ser puntero al nombre de la categoria
+	move $a2, $v0 		#a2 ahora va a ser puntero al nombre del obj
 	addi $a0, $s0, 4	#cargo en a0 la direcc de s0+4, que es el 2do campo de la categ, que estara apuntando a lista obj
 	li $a1, 0 	#a1=null	
 	jal addnode
@@ -470,6 +487,10 @@ newobject:	#anexar un objeto a la categoria seleccionada en curso
 	li $v0, 4
 	la $a0, success		#imprimo mensaje de exito
 	syscall
+	
+	lw $s0, wclist		#me aseguro que wclist esta cargado... ver
+	lw $a0, 4($s0)
+	jal actualizar_ID
 	
 	end_newobject: 
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_newobject:)
@@ -488,6 +509,20 @@ newobject:	#anexar un objeto a la categoria seleccionada en curso
 		syscall
 		j end_newobject
 		
+
+
+
+
+actualizar_ID:
+	move $t1, $a0
+	li $t2, 1
+	
+	loop_ID:
+		sw $t2, 4($t1)
+		lw $t1, 12($t1)
+		addi $t2, $t2, 1
+		bne $t1, $a0, loop_ID
+		jr $ra
 
 
 
@@ -565,6 +600,13 @@ delobject:
 
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
+	
+	
+	
+	
+	
+	##DESPUES DE BORRAR, CHEQUEAR SI ES NULL, SI NO ES NULL, ACTUALIZAR ID
+	
 
 
 	error_701:
@@ -595,6 +637,7 @@ delobject:
 end:		##Funcion para cerrar el programa
 	li $v0, 10	
 	syscall
+
 
 	
 
