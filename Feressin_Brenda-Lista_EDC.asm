@@ -35,6 +35,7 @@ error401: 	.asciiz "Error 401: No hay categorias disponibles para borrar."
 error501:	.asciiz "Error 501: No hay categorias disponibles para anexar objetos."
 error601: 	.asciiz "Error 601: No hay categorias disponibles para acceder a sus objetos."
 error602:	.asciiz "Error 602: No hay objetos creados para la categoria seleccionada."
+error701: 	.asciiz "Error 701: No hay categorias ingresadas."
 
 .text
 
@@ -53,8 +54,8 @@ error602:	.asciiz "Error 602: No hay objetos creados para la categoria seleccion
 	sw $t1, 20($t0)
 	la $t1, listobjects
 	sw $t1, 24($t0)
-#	la $t1, delobject
-#	sw $t1, 28($t0)
+	la $t1, delobject
+	sw $t1, 28($t0)
 	
 main: 	
 #Imprimo menu
@@ -71,9 +72,9 @@ main:
 	
 	
 #VALIDAR QUE EL DATO ESTE ENTRE 1 Y 8 PARA QUE NO ME TIRE ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#Si el error fuera una selección inexistente del menú, el códido de error sería (101)
 	
 #Hago una comparacion entre el input del usuario y los nros del menu para saber a que funcion salto.
-
 
 ####CAMBIAR ESTA MANERA DE HACERLO!!!!! TENGO QUE USAR LA INICIALIZACION E IR ACCEDIENDO DESDE AHI!!!!!!!!
 
@@ -114,8 +115,11 @@ main:
 	jal listobjects
 	
 	no_listobjects:
-#	li $t2, 8
-#	beq $t1, $t2, delobject
+	li $t2, 8
+	bne $t1, $t2, no_delobject
+	jal delobject
+	
+	no_delobject:
 
 #imprimo espacio \n	
 	li $v0, 4
@@ -127,12 +131,6 @@ main:
 	
 	
 	
-	
-
-	
-
-
-
 
 smalloc:		##funcion para obtener espacio de memoria, ya sea de la lista de liberados o del heap
 	lw $t0, slist		#"puntero"-> en la 1er vuelta es null	
@@ -352,6 +350,8 @@ error_301:
 
 
 
+
+
 delcategory:
 	
 	#Si lista de obj de cat selecc = 0 ->borrar solo la cat y seleccionar como cat automáticamente la sig si existe.
@@ -491,6 +491,8 @@ newobject:	#anexar un objeto a la categoria seleccionada en curso
 
 
 
+
+
 listobjects: 	#listar objetos de la categoria en curso
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
@@ -517,7 +519,7 @@ listobjects: 	#listar objetos de la categoria en curso
 		syscall
 		lw $t0, 12($t0)		#avanzo t0 al siguiente nodo
 		beq $t0, $s1, end_listobject	# chequeo si termina el loop viendo si t0 es == s1
-		j loop_list_cat			# repetir hasta salir en el renglon de arriba
+		j loop_list_obj		# repetir hasta salir en el renglon de arriba
 	
 
 	error_601:
@@ -545,6 +547,39 @@ listobjects: 	#listar objetos de la categoria en curso
 	
 
 	end_listobject:
+		li $v0,4
+		la $a0, return
+		syscall
+		lw $ra, 4($sp)		#recupero la direcc para volver al menu 
+		addiu $sp, $sp, 4
+		jr $ra	
+
+
+
+
+
+delobject:	
+#Borrar un objeto de la categoría seleccionada en curso usando el ID. 
+#Si el ID provisto no es encontrado se informará con un mensaje notFound
+#Si no existen categorías el error (701).
+
+	addiu $sp, $sp, -4	                    
+	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
+
+
+	error_701:
+	#Imprimir mensaje: Error 701: No hay categorias ingresadas.
+	
+		li $v0, 4
+		la $a0, return		#imprimo espacio \n	
+		syscall
+		li $v0, 4
+		la $a0, error701
+		syscall
+		j end_delobject	
+	
+
+	end_delobject:
 		li $v0,4
 		la $a0, return
 		syscall
