@@ -33,6 +33,8 @@ error202:	.asciiz "Error 202: Solo hay una categoria disponible."
 error301: 	.asciiz "Error 301: No hay categorias disponibles para listar."
 error401: 	.asciiz "Error 401: No hay categorias disponibles para borrar."
 error501:	.asciiz "Error 501: No hay categorias disponibles para anexar objetos."
+error601: 	.asciiz "Error 601: No hay categorias disponibles para acceder a sus objetos."
+error602:	.asciiz "Error 602: No hay objetos creados para la categoria seleccionada."
 
 .text
 
@@ -49,8 +51,8 @@ error501:	.asciiz "Error 501: No hay categorias disponibles para anexar objetos.
 	sw $t1, 16($t0)
 	la $t1, newobject
 	sw $t1, 20($t0)
-#	la $t1, listobjects
-#	sw $t1, 24($t0)
+	la $t1, listobjects
+	sw $t1, 24($t0)
 #	la $t1, delobject
 #	sw $t1, 28($t0)
 	
@@ -107,8 +109,11 @@ main:
 	jal newobject
 	
 	no_newobject:
-#	li $t2, 7
-#	beq $t1, $t2, listobjects
+	li $t2, 7
+	bne $t1, $t2, no_listobjects
+	jal listobjects
+	
+	no_listobjects:
 #	li $t2, 8
 #	beq $t1, $t2, delobject
 
@@ -454,23 +459,17 @@ newobject:	#anexar un objeto a la categoria seleccionada en curso
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
 	lw $s0, wclist		#cargo el contenido de wclist(direcc al nodo seleccionado de la lista de categ)
-	beqz $s0, error501	#wclist=null
+	beqz $s0, error_501	#wclist=null
 	la $a0, objName		#cargo la direcc de objName (msg) "\nIngrese el nombre de un objeto: "
-	
 	jal getblock		#de este voy a volver con el input nombre obj en la direcc de v0
 	move $a2, $v0 	#a2= *char to category name	##a2 ahora va a ser puntero al nombre de la categoria
 	addi $a0, $s0, 4	#cargo en a0 la direcc de s0+4, que es el 2do campo de la categ, que estara apuntando a lista obj
 	li $a1, 0 	#a1=null	
 	jal addnode
-	#lw $t0, wclist		#cargo en t0 el contenido de wclist- puntero a la categ selecc
-	#bnez $t0, newcategory_end	#si wclist !null, salto
-	#sw $v0, wclist 	#update working list if was NULL	##actualizar wclist si es null, p/q apunte a v0 (nodo actual) y sigo
-	
-	newobject_success: 
-		li $v0, 0 	#return success	##cargo 0 en v0 (null)
-		li $v0, 4
-		la $a0, success		#imprimo mensaje de exito
-		syscall
+	li $v0, 0 	#return success	##cargo 0 en v0 (null)
+	li $v0, 4
+	la $a0, success		#imprimo mensaje de exito
+	syscall
 	
 	end_newobject: 
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_newobject:)
@@ -491,6 +490,67 @@ newobject:	#anexar un objeto a la categoria seleccionada en curso
 		
 
 
+
+listobjects: 	#listar objetos de la categoria en curso
+	addiu $sp, $sp, -4	                    
+	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
+	lw $s0, wclist		#cargo el contenido de wclist(direcc al nodo seleccionado de la lista de categ)
+	beqz $s0, error_601	#wclist=null
+	lw $s1, 4($s0)		#cargo el cont del 2do campo de la cat. (ahi esta la direcc al 1er elem obj
+	beqz $s1, error_602
+	
+	move $t0, $s1		#hago una copia. s1 es la referencia contra la cual chequear y t0 la variable q cambia en c/ iterac
+	###VER!!! LO TENGO QUE PONER EN OTRO LUGAR, VER LA MANERA!!!!
+	li $v0, 4
+	la $a0, success		#imprimo mensaje de exito
+	syscall
+	li $v0, 4
+	la $a0, return		#imprimo \n
+	syscall
+	
+	loop_list_obj:	
+		li $v0, 4
+		lw $a0, 8($t0)
+		syscall			# imprimir el primer nodo
+		li $v0, 4
+		la $a0, return		#imprimir \n
+		syscall
+		lw $t0, 12($t0)		#avanzo t0 al siguiente nodo
+		beq $t0, $s1, end_listobject	# chequeo si termina el loop viendo si t0 es == s1
+		j loop_list_cat			# repetir hasta salir en el renglon de arriba
+	
+
+	error_601:
+	#Imprimir mensaje: Error 601: No hay categorias disponibles para acceder a sus objetos.
+	
+		li $v0, 4
+		la $a0, return		#imprimo espacio \n	
+		syscall
+		li $v0, 4
+		la $a0, error601
+		syscall
+		j end_listobject	
+	
+	
+	error_602:
+	#Imprimir mensaje: Error 602: No hay objetos creados para la categoria seleccionada.
+	
+		li $v0, 4
+		la $a0, return		#imprimo espacio \n	
+		syscall
+		li $v0, 4
+		la $a0, error602
+		syscall
+		j end_listobject	
+	
+
+	end_listobject:
+		li $v0,4
+		la $a0, return
+		syscall
+		lw $ra, 4($sp)		#recupero la direcc para volver al menu 
+		addiu $sp, $sp, 4
+		jr $ra	
 
 
 
