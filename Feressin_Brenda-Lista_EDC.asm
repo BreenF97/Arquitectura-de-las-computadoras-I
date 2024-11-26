@@ -1,5 +1,3 @@
-		###CODIGO DEL PDF, PARA IR AGREGANDO
-	
 	.data
 slist:	.word 0		#puntero - lo utilizan las funciones smalloc y sfree
 cclist:	.word 0		#puntero a la lista de categorias - circular category list
@@ -36,6 +34,8 @@ error501:	.asciiz "Error 501: No hay categorias disponibles para anexar objetos.
 error601: 	.asciiz "Error 601: No hay categorias disponibles para acceder a sus objetos."
 error602:	.asciiz "Error 602: No hay objetos creados para la categoria seleccionada."
 error701: 	.asciiz "Error 701: No hay categorias ingresadas."
+error702:	.asciiz "Error 702: No hay objetos disponibles para borrar en la categoria seleccionada."
+error_notfound:	.asciiz "El ID provisto no fue encontrado."
 
 .text
 
@@ -68,18 +68,16 @@ main:
 	
 	li $v0, 5
 	syscall
-	bgt $v0, 8, error_101
-	blt $v0, 0, error_101
+	bgt $v0, 8, error_101	#valido que el dato este entre 0 y 8 para que no me tire error!!!
+	blt $v0, 0, error_101	#Si el error fuera una selección inexistente del menú, el códido de error sería (101)
 	move $t1, $v0	#Lo paso a t1 porque al v0 lo voy a estar pisando constantemente con syscall seguro
 	
-#VALIDAR QUE EL DATO ESTE ENTRE 1 Y 8 PARA QUE NO ME TIRE ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#Si el error fuera una selección inexistente del menú, el códido de error sería (101)
-	
+
 #Hago una comparacion entre el input del usuario y los nros del menu para saber a que funcion salto.
 
 ####CAMBIAR ESTA MANERA DE HACERLO!!!!! TENGO QUE USAR LA INICIALIZACION E IR ACCEDIENDO DESDE AHI!!!!!!!!
 
-	##PROVISORIOOOO!!!!
+	##PROVISORIOOOO!!!! tengo que hacerlo de una manera mas entendible y prolija
 	la $t0, schedv
 	beqz $t1, end
 	
@@ -374,9 +372,7 @@ error_301:
 
 delcategory:
 	
-	#Si lista de obj de cat selecc = 0 ->borrar solo la cat y seleccionar como cat automáticamente la sig si existe.
-	#Si no existe cat sig, deberá nulificar los punteros necesarios
-	#Si !0, 1ero borrar todos los obj, devolviendo la memoria, y luego borrar la cat como se indico antes
+##ESTO ME QUEDA PENDIENTE DE CHEQUEAR! -> Si lista obj !0, 1ero borrar todos los obj, devolviendo la memoria, y luego borrar la cat 
 
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
@@ -604,19 +600,52 @@ delobject:
 
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
+	lw $s0, wclist 
+	beqz $s0, error_701
+	lw $s1, 4($s0)
+	la $s3, 4($s0)		##VER!!!		
+	beqz $s1, error_702	#para chequear que exista objeto a borrar  --> ESTA NO DECIA EL PDF PERO ME PARECE NECESARIA
+	la $a0, idObj		#cargo la direcc de idObj (msg)
+	li $v0, 4		
+	syscall			#syscall para imprimir el msg "ingrese el id del obj a eliminar" 
+	li $v0, 5           	#syscall para leer un número entero
+    	syscall             
+    	move $s2, $v0
+	#queda en s1=lista obj - s2=id usuario - t1= id objetos recorridos
+	move $t0, $s1			#a t0 lo voy a ir modificando para avanzar en los nodos de la lista de obj
 	
-	#lo sig a hacer es chequear que lw s0 wclist no sea null, si no salto a error 701
+	loop_del_obj:
+		lw $t1, 4($t0)
+		beq $t1, $s2, found	#id usuario = id obj??
+		lw $t0, 12($t0)		#avanzo al sig nodo
+		beq $t0, $s1, not_found	#sig nodo = 1er nodo lista obj??
+		j loop_del_obj
 	
-	#luego ver que el objeto no sea null, es decir lw s1, 4($s0), si no salto a un error CREAR ESE ERROR!!!!!!
+	found:		##DESPUES DE BORRAR, CHEQUEAR SI ES NULL, SI NO ES NULL, ACTUALIZAR ID
+		move $a0, $t0		# seteo direcc del nodo a borrar
+		move $a1, $s3		#VEER!!!  #seteo direcc de la lista donde esta el nodo a borrar
+		jal delnode_obj
+		li $v0, 4
+		la $a0, return		#imprimo \n
+		syscall
+		li $v0, 4
+		la $a0, success		#imprimo mensaje de exito
+		syscall
+		move $a0, $s1		#esto es para pasar bien el argumento en funcion actualizar_id
+		
+		jal actualizar_ID
+		j end_delobject
 	
-	#despues imprimir el msg para recibir el id del usuario, guardarlo en s2 (syscall)
 	
-	#
-	
-	
-	
-	
-	##DESPUES DE BORRAR, CHEQUEAR SI ES NULL, SI NO ES NULL, ACTUALIZAR ID
+	not_found:	#Si el ID provisto no es encontrado se informará con un mensaje notFound
+		
+		li $v0, 4
+		la $a0, return		#imprimo espacio \n	
+		syscall
+		li $v0, 4
+		la $a0, error_notfound
+		syscall
+		j end_delobject	
 	
 
 
@@ -630,6 +659,18 @@ delobject:
 		la $a0, error701
 		syscall
 		j end_delobject	
+		
+
+	error_702:
+	#Imprimir mensaje: Error 702: No hay objetos disponibles para borrar en la categoria seleccionada.
+	
+		li $v0, 4
+		la $a0, return		#imprimo espacio \n	
+		syscall
+		li $v0, 4
+		la $a0, error702
+		syscall
+		j end_delobject	
 	
 
 	end_delobject:
@@ -639,6 +680,37 @@ delobject:
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu 
 		addiu $sp, $sp, 4
 		jr $ra	
+
+
+
+
+####TENGO QUE VER SI PODRIA HABER APROVECHADO EL MISMO DELNODE PARA FUNCION DE BORRAR CATEGORIA Y DE BORRAR OBJETO...
+
+delnode_obj:		#a0= direcc del nodo a borrar  -  a1= direcc de la lista donde esta el nodo a borrar
+	addi $sp, $sp, -8
+	sw $ra, 8($sp)
+	sw $a0, 4($sp)
+	lw $a0, 8($a0)
+	jal sfree
+	lw $a0, 4($sp)
+	lw $t0, 12($a0)
+	beq $a0, $t0, delnode_point_self_obj
+	lw $t1, 0($a0)
+	sw $t1, 0($t0)
+	sw $t0, 12($t1)
+	lw $t1, 0($a1)
+	bne $a0, $t1, delnode_exit_obj
+	sw $t0, ($a1)
+	j delnode_exit_obj
+
+	delnode_point_self_obj:
+		sw $zero, ($a1)
+		
+	delnode_exit_obj:
+		jal sfree
+		lw $ra, 8($sp)
+		addi $sp, $sp, 8
+		jr $ra
 
 
 
