@@ -26,6 +26,7 @@ success:.asciiz "La operacion se realizo con exito\n\n"
 
 wc: 	.asciiz "> "
 
+error101: 	.asciiz "Error 101: seleccion inexistente del menu."
 error201:	.asciiz "Error 201: No hay categorias disponibles."
 error202:	.asciiz "Error 202: Solo hay una categoria disponible."
 error301: 	.asciiz "Error 301: No hay categorias disponibles para listar."
@@ -36,6 +37,7 @@ error602:	.asciiz "Error 602: No hay objetos creados para la categoria seleccion
 error701: 	.asciiz "Error 701: No hay categorias ingresadas."
 error702:	.asciiz "Error 702: No hay objetos disponibles para borrar en la categoria seleccionada."
 error_notfound:	.asciiz "El ID provisto no fue encontrado."
+
 
 .text
 
@@ -145,7 +147,14 @@ main:
 	j main		#loop para volver a ejecutar desde main.
 	
 error_101:
-	#imprime mensaje error
+	#imprime mensaje error: Si el error fuera una selección inexistente del menú, el códido de error sería (101)
+	
+	li $v0, 4
+	la $a0, return		#imprimo espacio \n	
+	syscall
+	li $v0, 4
+	la $a0, error101
+	syscall
 	j main
 	
 	
