@@ -155,6 +155,9 @@ error_101:
 	li $v0, 4
 	la $a0, error101
 	syscall
+	li $v0, 4
+	la $a0, return		#imprimo espacio \n	
+	syscall
 	j main
 	
 	
@@ -722,7 +725,7 @@ delnode_obj:		#a0= direcc del nodo a borrar  -  a1= direcc de la lista donde est
 		jr $ra
 
 
-
+####PENDIENTE DE VER: cuando tengo un solo elemento en lista obj y lo quiero borrar, me tiro error!CHEQUEAR
 
 
 
