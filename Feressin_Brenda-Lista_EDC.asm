@@ -525,7 +525,7 @@ newobject:	#anexar un objeto a la categoria seleccionada en curso
 
 
 
-actualizar_ID:
+actualizar_ID:  #en a0 debe estar la direccion al primer nodo de la lista de objetos
 	move $t1, $a0
 	li $t2, 1
 	
@@ -643,7 +643,11 @@ delobject:
 		li $v0, 4
 		la $a0, success		#imprimo mensaje de exito
 		syscall
-		move $a0, $s1		#esto es para pasar bien el argumento en funcion actualizar_id
+		#if wclist(4) == null entonces salto a end delojvect, else move y jal
+		
+		lw $t0, 4($s0)
+		beqz $t0, end_delobject
+		move $a0, $t0		#esto es para pasar bien el argumento en funcion actualizar_id
 		
 		jal actualizar_ID
 		j end_delobject
@@ -725,8 +729,8 @@ delnode_obj:		#a0= direcc del nodo a borrar  -  a1= direcc de la lista donde est
 		jr $ra
 
 
-####PENDIENTE DE VER: cuando tengo un solo elemento en lista obj y lo quiero borrar, me tiro error!CHEQUEAR
 
+####PENDIENTE DE VER: cuando tengo un solo elemento en lista obj y lo quiero borrar, me tiro error!CHEQUEAR
 
 
 end:		##Funcion para cerrar el programa
