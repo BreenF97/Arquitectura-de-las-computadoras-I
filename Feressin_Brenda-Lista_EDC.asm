@@ -3,6 +3,7 @@ slist:	.word 0		#puntero - lo utilizan las funciones smalloc y sfree
 cclist:	.word 0		#puntero a la lista de categorias - circular category list
 wclist:	.word 0		#puntero a la categoria seleccionada en curso - working category list
 schedv:	.space 32	#vector de direcc scheduler vector- 32 bytes para las 8 opciones del menu
+
 menu:	.ascii "Colecciones de objetos categorizados\n"
 	.ascii "====================================\n"
 	.ascii "1-Nueva categoria\n"
@@ -16,27 +17,26 @@ menu:	.ascii "Colecciones de objetos categorizados\n"
 	.ascii "0-Salir\n"
 	.asciiz "Ingrese la opcion deseada: "
 	
-#error:	.asciiz "Error: "
 return:	.asciiz "\n"
 catName:.asciiz "\nIngrese el nombre de una categoria: "
 selCat: .asciiz "\nSe ha seleccionado la categoria: "
 idObj:	.asciiz "\nIngrese el ID del objeto a eliminar: "
 objName:.asciiz "\nIngrese el nombre de un objeto: "
-success:.asciiz "La operacion se realizo con exito\n\n"	
+success:.asciiz "\nLa operacion se realizo con exito\n"	
 
 wc: 	.asciiz "> "
 
-error101: 	.asciiz "Error 101: seleccion inexistente del menu."
-error201:	.asciiz "Error 201: No hay categorias disponibles."
-error202:	.asciiz "Error 202: Solo hay una categoria disponible."
-error301: 	.asciiz "Error 301: No hay categorias disponibles para listar."
-error401: 	.asciiz "Error 401: No hay categorias disponibles para borrar."
-error501:	.asciiz "Error 501: No hay categorias disponibles para anexar objetos."
-error601: 	.asciiz "Error 601: No hay categorias disponibles para acceder a sus objetos."
-error602:	.asciiz "Error 602: No hay objetos creados para la categoria seleccionada."
-error701: 	.asciiz "Error 701: No hay categorias ingresadas."
-error702:	.asciiz "Error 702: No hay objetos disponibles para borrar en la categoria seleccionada."
-error_notfound:	.asciiz "El ID provisto no fue encontrado."
+error101: 	.asciiz "Error 101: Seleccion inexistente del menu.\n"
+error201:	.asciiz "Error 201: No hay categorias disponibles.\n"
+error202:	.asciiz "Error 202: Solo hay una categoria disponible.\n"
+error301: 	.asciiz "Error 301: No hay categorias disponibles para listar.\n"
+error401: 	.asciiz "Error 401: No hay categorias disponibles para borrar.\n"
+error501:	.asciiz "Error 501: No hay categorias disponibles para anexar objetos.\n"
+error601: 	.asciiz "Error 601: No hay categorias disponibles para acceder a sus objetos.\n"
+error602:	.asciiz "Error 602: No hay objetos creados para la categoria seleccionada.\n"
+error701: 	.asciiz "Error 701: No hay categorias ingresadas.\n"
+error702:	.asciiz "Error 702: No hay objetos disponibles para borrar en la categoria seleccionada.\n"
+error_notfound:	.asciiz "El ID provisto no fue encontrado.\n"
 
 
 .text
@@ -70,16 +70,13 @@ main:
 	
 	li $v0, 5
 	syscall
-	bgt $v0, 8, error_101	#valido que el dato este entre 0 y 8 para que no me tire error!!!
-	blt $v0, 0, error_101	#Si el error fuera una selección inexistente del menú, el códido de error sería (101)
-	move $t1, $v0	#Lo paso a t1 porque al v0 lo voy a estar pisando constantemente con syscall seguro
+	bgt $v0, 8, error_101	#valido que el dato este entre 0 y 8, de lo contrario, me indica mensaje de error
+	blt $v0, 0, error_101	#Selección inexistente del menú, error 101
+	move $t1, $v0		#Lo paso a t1 porque al v0 lo voy a estar pisando constantemente con syscall
 	
 
 #Hago una comparacion entre el input del usuario y los nros del menu para saber a que funcion salto.
 
-####CAMBIAR ESTA MANERA DE HACERLO!!!!! TENGO QUE USAR LA INICIALIZACION E IR ACCEDIENDO DESDE AHI!!!!!!!!
-
-	##PROVISORIOOOO!!!! tengo que hacerlo de una manera mas entendible y prolija
 	la $t0, schedv
 	beqz $t1, end
 	
@@ -139,30 +136,31 @@ main:
 	
 	no_delobject:
 
-#imprimo espacio \n	
+#imprimo \n	
 	li $v0, 4
 	la $a0, return
 	syscall
 
 	j main		#loop para volver a ejecutar desde main.
 	
+	
 error_101:
 	#imprime mensaje error: Si el error fuera una selección inexistente del menú, el códido de error sería (101)
 	
 	li $v0, 4
-	la $a0, return		#imprimo espacio \n	
+	la $a0, return		#imprimo \n	
 	syscall
 	li $v0, 4
 	la $a0, error101
 	syscall
 	li $v0, 4
-	la $a0, return		#imprimo espacio \n	
+	la $a0, return		#imprimo \n	
 	syscall
 	j main
 	
 	
 
-smalloc:		##funcion para obtener espacio de memoria, ya sea de la lista de liberados o del heap
+smalloc:			##funcion para obtener espacio de memoria, ya sea de la lista de liberados o del heap
 	lw $t0, slist		#"puntero"-> en la 1er vuelta es null	
 	beqz $t0, sbrk
 	move $v0, $t0		#si !null, copio en v0 la direcc de slist cargada en t0 (le estoy dando la direcc de un bloq liberado)
@@ -170,7 +168,7 @@ smalloc:		##funcion para obtener espacio de memoria, ya sea de la lista de liber
 				#Este campo contiene la direcc del sig bloq free. x ende, slist ahora apunta al sig bloqfree, 
 				#"sacando" al 1ero de la lista free para su uso.
 	sw $t0, slist		#Guardo en slist el nuevo 1er bloq free, actualizando el puntero
-	jr $ra		#vuelvo a la direcc en ra, con direcc en v0 de un bloq reutilizado
+	jr $ra			#vuelvo a la direcc en ra, con direcc en v0 de un bloq reutilizado
 	
 	sbrk: 		##esto se usa para pedir memoria en el heap, solo si no tengo bloqs disponibles en la lista de liberados
 		li $a0, 16 	#node size fixed 4 word	##nodo de tama;o fijo en 16 bytes, o sea 4 word
@@ -273,9 +271,9 @@ nextcategory:
 	la $a0, ($t2)		#"input_categ"
 	li $v0, 4		
 	syscall	
-	li $v0, 4
-	la $a0, return		#imprimo \n
-	syscall
+	#li $v0, 4
+	#la $a0, return		#imprimo \n
+	#syscall
 	li $v0, 4
 	la $a0, success		#imprimo mensaje de exito
 	syscall
@@ -288,6 +286,8 @@ end_next_prev_category:
 error_201:
 	#Imprimir mensaje: Error 201: No hay categorias disponibles.
 	li $v0, 4
+	la $a0, return		#imprimo \n	
+	syscall
 	la $a0, error201
 	syscall
 	j end_next_prev_category
@@ -295,6 +295,8 @@ error_201:
 error_202: 
 	#Imprimir mensaje: Error 202: Solo hay una categoria disponible.
 	li $v0, 4
+	la $a0, return		#imprimo \n	
+	syscall
 	la $a0, error202
 	syscall
 	j end_next_prev_category
@@ -316,9 +318,9 @@ prevcategory:
 	la $a0, ($t2)		#"input_categ"
 	li $v0, 4		
 	syscall
-	li $v0, 4
-	la $a0, return		#imprimo \n
-	syscall
+	#li $v0, 4
+	#la $a0, return		#imprimo \n
+	#syscall
 	li $v0, 4
 	la $a0, success		#imprimo mensaje de exito
 	syscall
@@ -331,9 +333,9 @@ listcategory:
 	
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
-	li $v0,4
-	la $a0, return
-	syscall			#imprimo un salto de linea
+	#li $v0,4
+	#la $a0, return
+	#syscall			#imprimo un salto de linea
 	lw $t1, wclist		#cargo la direcc del nodo de la categ en curso
 	lw $s0, cclist		#cargo el contenido de cclist(direcc al primer nodo de la lista de categ)
 	beqz $s0, error_301	#si es null, entonces no hay categorias, error301
@@ -364,9 +366,9 @@ listcategory:
 			j loop_list_cat			# repetir hasta salir en el renglon de arriba
 				
 	end_listcategory:
-		li $v0,4
-		la $a0, return
-		syscall
+		#li $v0,4
+		#la $a0, return
+		#syscall
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_listcategory)
 		addiu $sp, $sp, 4
 		jr $ra	
@@ -383,8 +385,6 @@ error_301:
 
 
 delcategory:
-	
-##ESTO ME QUEDA PENDIENTE DE CHEQUEAR! -> Si lista obj !0, 1ero borrar todos los obj, devolviendo la memoria, y luego borrar la cat 
 
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
@@ -464,9 +464,9 @@ delcategory:
 
 
 	end_delcategory:
-		li $v0, 4
-		la $a0, return		#imprimo espacio \n 
-		syscall
+		#li $v0, 4
+		#la $a0, return		#imprimo espacio \n 
+		#syscall
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_delcategory:)
 		addiu $sp, $sp, 4
 		jr $ra
@@ -594,9 +594,9 @@ listobjects: 	#listar objetos de la categoria en curso
 	
 
 	end_listobject:
-		li $v0,4
-		la $a0, return
-		syscall
+		#li $v0,4
+		#la $a0, return
+		#syscall
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu 
 		addiu $sp, $sp, 4
 		jr $ra	
@@ -605,10 +605,7 @@ listobjects: 	#listar objetos de la categoria en curso
 
 
 
-delobject:	
-#Borrar un objeto de la categoría seleccionada en curso usando el ID. 
-#Si el ID provisto no es encontrado se informará con un mensaje notFound
-#Si no existen categorías el error (701).
+delobject:		#Borrar un objeto de la categoría seleccionada en curso usando el ID. 
 
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
@@ -637,9 +634,9 @@ delobject:
 		move $a0, $t0		# seteo direcc del nodo a borrar
 		move $a1, $s3		#VEER!!!  #seteo direcc de la lista donde esta el nodo a borrar
 		jal delnode_obj
-		li $v0, 4
-		la $a0, return		#imprimo \n
-		syscall
+		#li $v0, 4
+		#la $a0, return		#imprimo \n
+		#syscall
 		li $v0, 4
 		la $a0, success		#imprimo mensaje de exito
 		syscall
@@ -690,9 +687,9 @@ delobject:
 	
 
 	end_delobject:
-		li $v0,4
-		la $a0, return
-		syscall
+		#li $v0,4
+		#la $a0, return
+		#syscall
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu 
 		addiu $sp, $sp, 4
 		jr $ra	
@@ -728,9 +725,6 @@ delnode_obj:		#a0= direcc del nodo a borrar  -  a1= direcc de la lista donde est
 		addi $sp, $sp, 8
 		jr $ra
 
-
-
-####PENDIENTE DE VER: cuando tengo un solo elemento en lista obj y lo quiero borrar, me tiro error!CHEQUEAR
 
 
 end:		##Funcion para cerrar el programa
