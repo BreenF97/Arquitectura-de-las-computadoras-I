@@ -70,7 +70,7 @@ main:
 	
 	li $v0, 5
 	syscall
-	bgt $v0, 8, error_101	#valido que el dato este entre 0 y 8, de lo contrario, me indica mensaje de error
+	bgt $v0, 8, error_101	#valido que el dato este entre 0 y 8
 	blt $v0, 0, error_101	#Selección inexistente del menú, error 101
 	move $t1, $v0		#Lo paso a t1 porque al v0 lo voy a estar pisando constantemente con syscall
 	
@@ -145,7 +145,7 @@ main:
 	
 	
 error_101:
-	#imprime mensaje error: Si el error fuera una selección inexistente del menú, el códido de error sería (101)
+	#imprime mensaje error: selección inexistente del menú
 	
 	li $v0, 4
 	la $a0, return		#imprimo \n	
@@ -160,18 +160,19 @@ error_101:
 	
 	
 
-smalloc:			##funcion para obtener espacio de memoria, ya sea de la lista de liberados o del heap
-	lw $t0, slist		#"puntero"-> en la 1er vuelta es null	
+smalloc:			#funcion para obtener espacio de memoria, ya sea de la lista de liberados o del heap
+
+	lw $t0, slist		
 	beqz $t0, sbrk
-	move $v0, $t0		#si !null, copio en v0 la direcc de slist cargada en t0 (le estoy dando la direcc de un bloq liberado)
-	lw $t0, 12($t0)		#Sobreescribo t0 con el valor almacenado en la dir t0+12 (o sea 4to campo del bloqfree q va a usar). 
-				#Este campo contiene la direcc del sig bloq free. x ende, slist ahora apunta al sig bloqfree, 
-				#"sacando" al 1ero de la lista free para su uso.
-	sw $t0, slist		#Guardo en slist el nuevo 1er bloq free, actualizando el puntero
+	move $v0, $t0		#si !null, copio en v0 la direcc de slist cargada en t0 (direcc de un bloq liberado)
+	lw $t0, 12($t0)		#El 4to campo del bloqfree q va a usar, contiene la direcc del sig bloq free. x ende, slist ahora 
+				#apunta al sig bloqfree, "sacando" al 1ero de la lista free para su uso.
+	sw $t0, slist		#Actualizo el puntero
 	jr $ra			#vuelvo a la direcc en ra, con direcc en v0 de un bloq reutilizado
 	
-	sbrk: 		##esto se usa para pedir memoria en el heap, solo si no tengo bloqs disponibles en la lista de liberados
-		li $a0, 16 	#node size fixed 4 word	##nodo de tama;o fijo en 16 bytes, o sea 4 word
+	sbrk: 			#pido memoria en el heap, solo si no tengo bloques disponibles en la lista de liberados
+	
+		li $a0, 16 	#nodo de tama;o fijo en 16 bytes, o sea 4 word
 		li $v0, 9
 		syscall		#return node address in v0	##devuelve en v0 la direcc de espacio de memoria pedido en el heap
 		jr $ra		#vuelve a la direcc guardada en ra, con direcc en v0 de mem heap
@@ -179,20 +180,22 @@ smalloc:			##funcion para obtener espacio de memoria, ya sea de la lista de libe
 	
 	
 newcategory:
+
 	addiu $sp, $sp, -4	#Stack pointer crece decrec. Al restarle 4, me muevo -4 bytes a la sig direcc, a la cual apuntara sp                         
-	sw $ra, 4($sp)	#No retrocede el puntero! Guardo ra en la direcc inicial (-4+4). Evito sobreesc.xq sp apunta a la sig direcc
+	sw $ra, 4($sp)		#Guardo ra en la direcc inicial (-4+4). Evito sobreesc.xq sp apunta a la sig direcc
 	la $a0, catName		#input category name	##cargo la direcc de catName (msg)
 	jal getblock
-	move $a2, $v0 	#a2= *char to category name	##a2 ahora va a ser puntero al nombre de la categoria
-	la $a0, cclist	#a0=list	##cargo en a0 la direcc de cclist, que es puntero a lista de categ
-	li $a1, 0 	#a1=null	
+	move $a2, $v0 		#a2 ahora va a ser puntero al nombre de la categoria
+	la $a0, cclist		#cargo en a0 la direcc de cclist, que es puntero a lista de categ
+	li $a1, 0 		##a1=null	
 	jal addnode
 	lw $t0, wclist		#cargo en t0 el contenido de wclist- puntero a la categ selecc
 	bnez $t0, newcategory_end	#si wclist !null, salto
-	sw $v0, wclist 	#update working list if was NULL	##actualizar wclist si es null, p/q apunte a v0 (nodo actual) y sigo
+	sw $v0, wclist 		#actualizar wclist si es null, p/q apunte a v0 (nodo actual) y sigo
 	
 	newcategory_end: 
-		li $v0, 0 	#return success	##cargo 0 en v0 (null)
+	
+		li $v0, 0 		#return success	##cargo 0 en v0 (null)
 		li $v0, 4
 		la $a0, success		#imprimo mensaje de exito
 		syscall
@@ -202,64 +205,72 @@ newcategory:
 
 
 
-getblock: 		##funcion para obtener un bloque
+getblock: 			#funcion para obtener un bloque
+
 	addi $sp, $sp, -4
 	sw $ra, 4($sp)		#estoy guardando la 2da direcc de retorno en sp, para volver a func new category
 	li $v0, 4		
 	syscall			#syscall para imprimir msg de catName
 	jal smalloc
 	move $a0, $v0		#la direcc del bloq que tengo en v0 la copio a a0
-	li $a1, 16		#syscall p leer input_string. En a1 reservo sizeMax p el buffer en mem q la almacenara (incluyendo \0)
+	li $a1, 16		#syscall p leer input_string. En a1 reservo sizeMax p el buffer en mem q la almacenara (incluye \0)
 	li $v0, 8		
-	syscall			#Devuelve la cadena almacenada en la direcc guardada en a0 (requiere tener una direcc en a0 este syscall)
-	move $v0, $a0		#Copio en v0 la direcc guardada en a0
+	syscall			#Devuelve el string almacenado en la direcc guardada en a0 (requiere tener una direcc en a0 este syscall)
+	move $v0, $a0		
 	lw $ra, 4($sp)		#Recupero la 2da direcc de retorno en ra, que me permitira volver a func new category
 	addi $sp, $sp, 4
 	jr $ra			#vuelvo a funcion new category (renglon move $a2, $v0), con string almacenado en direcc cargada en v0
 		
 
 addnode:
+
 	addi $sp, $sp, -8	#preservo ra en la pila, para poder volver a func new category
 	sw $ra, 8($sp)
 	sw $a0, 4($sp)		#tambien preservo la direcc cclist (puntero a lista circ)
 	jal smalloc		#salto a smalloc para pedir memoria en el heap o un bloque liberado, para crear el nodo categoria
-	sw $a1, 4($v0)	#set node content	##vuelvo de smalloc con direcc bloq en v0. En el 2do campo, guardo a1=null
+	sw $a1, 4($v0)		#vuelvo de smalloc con direcc bloq en v0. En el 2do campo, guardo a1=null
 	sw $a2, 8($v0)		#En el 3er campo, puntero al nombre de la categoria
 	lw $a0, 4($sp)		#devuelvo en a0 la direcc cargada en el sp (cclist)
-	lw $t0, ($a0)	#first node address	##carga en t0 el cont de a0 (cclist). En t0 estoy cargando la direcc del 1er nodo
-	beqz $t0, addnode_empty_list	##si cclist=null, salto. Si !null,o sea apunta a un nodo, sigo
+	lw $t0, ($a0)		#carga en t0 el cont de a0 (cclist)-direcc del 1er nodo
+	beqz $t0, addnode_empty_list	#si cclist=null, salto. Si !null,sigo
 	
 	addnode_to_end:		#funcion para agregar nodo por detras
-		lw $t1, ($t0)	#last node address ##carga en t1 el 1er campo del 1er nodo, o sea la direcc del nodo ant al 1ero (ult nodo)
+	
+		lw $t1, ($t0)	#carga en t1 el 1er campo del 1er nodo, o sea la direcc del nodo ant al 1ero (ult nodo)
 				#Necesito ir hasta el ult nodo xq la funcion agrega nodos al final (t1 es el ult nodo antes de agregar)
-		#update prev and next pointers of new node ##actualizo p_sig y p_ant del nodo cargado
-		sw $t1, 0($v0)	#en el 1er campo del nodo nuevo (p_ant), cargo la direcc del que era nodo ant y ahora va a ser anteult.
+		
+		#actualizo p_sig y p_ant del nodo cargado
+		sw $t1, 0($v0)	#en 1er campo del nodo nuevo (p_ant), cargo la direcc del que era nodo ant y ahora va a ser anteult.
 		sw $t0, 12($v0)	#en el 4to campo del nodo nuevo (p_sig), cargo la direcc a la que apunta cclist (1er nodo)
-		#update prev and first node to new node ##actualizo 1er nodo y nodo ant al nodo actual
+		
+		#actualizo 1er nodo y nodo ant al nodo actual
 		sw $v0, 12($t1)	#En el ahora anteult, cargo en su 4to campo (p_sig) la direcc del nuevo nodo ultimo
 		sw $v0, 0($t0)	#En el 1er campo del 1er nodo (p_ant), cargo la direcc del nuevo nodo ultimo
 		j addnode_exit
 	
 	addnode_empty_list:	#funcion para agregar nodo a lista vacia
+	
 		sw $v0, ($a0)	#guardo en la direccion de cclist, almacenada en a0, la direcc del bloque a usar (v0)
 		sw $v0, 0($v0)	#guardo en el 1er campo del bloque la direcc del propio bloque
 		sw $v0, 12($v0)	#lo mismo para el ultimo campo del bloque, apunta a si mismo. Sigue a func addnode_exit
 		
 	addnode_exit:
+	
 		lw $ra, 8($sp)		#recupero de sp la direcc para retornar a func new category (renglon lw $t0, wclist)
 		addi $sp, $sp, 8
 		jr $ra			#vuelvo con un bloque en v0 inicializado(p_ant, p_obj, p_dato, p_sig) 
-					#Si el el 1er nodo = ademas, con cclist apuntandolo
-					#si no lo es = ademas, con el nodo previo y anterior actualizado apuntando este bloque v0
+					#Si es el 1er nodo: ademas, con cclist apuntandolo
+					#si no lo es: ademas, con el nodo previo y anterior actualizado apuntando este bloque v0
 	
 	
 
 
 nextcategory:
+
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
-	la $a0, wclist		#cargo la direcc de wclist(direcc del puntero que apunta a la categ en curso)
-	lw $t0, ($a0)		#cargo el contenido de wclist(direcc de la categ en curso)
+	la $a0, wclist		#cargo la direcc de wclist
+	lw $t0, ($a0)		#y su contenido
 	beqz $t0, error_201
 	lw $t1, 12($t0)		#cargo el contenido del 4to campo de la cat en curso (direcc de sig nodo)
 	beq $t0, $t1, error_202
@@ -271,20 +282,19 @@ nextcategory:
 	la $a0, ($t2)		#"input_categ"
 	li $v0, 4		
 	syscall	
-	#li $v0, 4
-	#la $a0, return		#imprimo \n
-	#syscall
 	li $v0, 4
 	la $a0, success		#imprimo mensaje de exito
 	syscall
 
 end_next_prev_category: 
+
 	lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_nextcategory o no_prevcategory)
 	addiu $sp, $sp, 4
 	jr $ra	
 	
 error_201:
 	#Imprimir mensaje: Error 201: No hay categorias disponibles.
+	
 	li $v0, 4
 	la $a0, return		#imprimo \n	
 	syscall
@@ -294,6 +304,7 @@ error_201:
 		
 error_202: 
 	#Imprimir mensaje: Error 202: Solo hay una categoria disponible.
+	
 	li $v0, 4
 	la $a0, return		#imprimo \n	
 	syscall
@@ -303,10 +314,11 @@ error_202:
 		
 
 prevcategory:
+
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
-	la $a0, wclist		#cargo la direcc de wclist(direcc del puntero que apunta a la categ en curso)
-	lw $t0, ($a0)		#cargo el contenido de wclist(direcc de la categ en curso)
+	la $a0, wclist		#cargo la direcc de wclist
+	lw $t0, ($a0)		#y su contenido
 	beqz $t0, error_201
 	lw $t1, ($t0)		#cargo el contenido del 1er campo de la cat en curso (direcc de ant nodo)
 	beq $t0, $t1, error_202
@@ -318,9 +330,6 @@ prevcategory:
 	la $a0, ($t2)		#"input_categ"
 	li $v0, 4		
 	syscall
-	#li $v0, 4
-	#la $a0, return		#imprimo \n
-	#syscall
 	li $v0, 4
 	la $a0, success		#imprimo mensaje de exito
 	syscall
@@ -333,13 +342,10 @@ listcategory:
 	
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
-	#li $v0,4
-	#la $a0, return
-	#syscall			#imprimo un salto de linea
 	lw $t1, wclist		#cargo la direcc del nodo de la categ en curso
 	lw $s0, cclist		#cargo el contenido de cclist(direcc al primer nodo de la lista de categ)
-	beqz $s0, error_301	#si es null, entonces no hay categorias, error301
-	move $t0, $s0		#hago una copia. s0 sera la referencia contra la cual chequear y t0 la variable q cambia en c/ iterac
+	beqz $s0, error_301	
+	move $t0, $s0		#s0: referencia contra la cual chequear -t0: variable q cambia en c/ iterac
 	###VER!!! LO TENGO QUE PONER EN OTRO LUGAR, VER LA MANERA!!!!
 	li $v0, 4
 	la $a0, success		#imprimo mensaje de exito
@@ -349,12 +355,14 @@ listcategory:
 	syscall
 	
 	loop_list_cat:	#si es la categ selecc, imprimir ">"
-		bne $t0, $t1, no_seleccionada	#sin no es wc, sigo con el loop. Si lo es, antes de seguir le imprimo x delante un ">"
+	
+		bne $t0, $t1, no_seleccionada	#si no es wc, sigo con el loop. Si lo es, antes de seguir le imprimo x delante un ">"
 		li $v0, 4
 		la $a0, wc
 		syscall
 		
 		no_seleccionada:
+		
 			li $v0, 4
 			lw $a0, 8($t0)
 			syscall			# imprimir el primer nodo
@@ -366,15 +374,14 @@ listcategory:
 			j loop_list_cat			# repetir hasta salir en el renglon de arriba
 				
 	end_listcategory:
-		#li $v0,4
-		#la $a0, return
-		#syscall
+	
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_listcategory)
 		addiu $sp, $sp, 4
 		jr $ra	
 	
 error_301:
 	#Imprimir mensaje: Error 301: No hay categorias disponibles para listar.
+	
 	li $v0, 4
 	la $a0, error301
 	syscall
@@ -389,26 +396,28 @@ delcategory:
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
 	lw $a0, wclist		#cargo el contenido de wclist(direcc al nodo seleccionado de la lista de categ)
-	beqz $a0, error_401	#si es null, entonces no hay categorias, error401
+	beqz $a0, error_401	
 	la $a1, wclist
 	la $s0, cclist 		#direcc de cclist
 	lw $a2, ($s0)		#contenido de cclist
-	#si cclist=wclist, actualizo cclist tambien
 
-# a0: node address to delete	##direccion del nodo a eliminar, guardado en wclist
-# a1: list address where node is deleted	##direcc de la lista donde se elimino el nodo -> wclist
+
+# a0: direccion del nodo a eliminar, guardado en wclist
+# a1: direcc de la lista donde se elimino el nodo -> wclist
+
 	delnode:
+	
 		addi $sp, $sp, -8
 		sw $ra, 8($sp)		#guardo la direcc para desp volver al menu
 	
 		sw $a0, 4($sp)		#guardo el argumento tmb (direcc del nodo a eliminar)
-		lw $a0, 8($a0)		#get block address ##obtener la dirección del bloque (de nombre-dato)
+		lw $a0, 8($a0)		#obtener la dirección del bloque (de nombre-dato)
 		jal sfree		#free block
-		lw $a0, 4($sp)		#restore argument a0	#restauro la direcc del nodo a eliminar
-		lw $t0, 12($a0)		#get address to next node of a0 node ##Obtener la direcc del nodo sig al q se iba a eliminar
+		lw $a0, 4($sp)		#restauro la direcc del nodo a eliminar
+		lw $t0, 12($a0)		#Obtener la direcc del nodo sig al q se iba a eliminar
 	
-		beq $a0, $t0, delnode_point_self	#es un unico nodo que apunta a si mismo
-		lw $t1, 0($a0) 		#get address to prev node #cargo en t1 el cont del 1er campo (direcc del nodo ant)
+		beq $a0, $t0, delnode_point_self	#unico nodo que apunta a si mismo
+		lw $t1, 0($a0) 		#cargo en t1 el cont del 1er campo (direcc del nodo ant)
 		sw $t1, 0($t0)		#guardo en el 1er campo del nodo sig(p_ant) la direcc del nodo ant.
 		sw $t0, 12($t1)		#guardo en el uilt campo del nodo ant (p_sig) la direcc del nodo sig
 		lw $t1, 0($a1)	#??????????????get address to first node again #obtener la direcc del 1er nodo nuevamente. ???????
@@ -416,16 +425,17 @@ delcategory:
 		bne $a0, $t1, delnode_exit	#si el nodo a eliminar ! del sig nodo, paso a exit
 	
 		bne $a0, $a2, no_actualizar_cclist
-		sw $t0, ($s0)	#Actualizo cclist si el nodo a borrar es el primer nodo de la lista categ
+		sw $t0, ($s0)		#Actualizo cclist si el nodo a borrar es el primer nodo de la lista categ
 	
 		no_actualizar_cclist:
-			sw $t0, ($a1)		#list point to next node #lista apunta al siguiente nodo
+		
+			sw $t0, ($a1)		#lista apunta al siguiente nodo
 			j delnode_exit
 	
 		delnode_point_self:
 		
-			sw $0, ($s0)	#Actualizo cclist
-			sw $zero, ($a1)	#only one node ##si es el unico nodo, la lista cat queda vacia, por lo tanto wclist =null\
+			sw $0, ($s0)		#Actualizo cclist
+			sw $zero, ($a1)		#si es el unico nodo, la lista cat queda vacia, por lo tanto wclist =null
 		
 		
 		delnode_exit:
@@ -446,9 +456,8 @@ delcategory:
 			lw $ra, 8($sp)
 			addi $sp, $sp, 8	#recupero la direcc para volver 
 			
-			j end_delcategory	#test
-			#jr $ra			#comentado para test
-			#####VOLVER A CHEQUEAR LOS RETURN ADDRESS!!!! A DONDE VOY EN CADA SALTO??????
+			j end_delcategory	
+			
 
 
 	error_401:
@@ -464,27 +473,26 @@ delcategory:
 
 
 	end_delcategory:
-		#li $v0, 4
-		#la $a0, return		#imprimo espacio \n 
-		#syscall
+	
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu (renglon: no_delcategory:)
 		addiu $sp, $sp, 4
 		jr $ra
 		
 		
 sfree: 		#en $a0 debe estar la direccion de memoria del nodo a eliminar	
+
 	lw $t0, slist		#cargo el contenido de slist(direcc de mem de 1er objeto de lista de eliminados)
 	sw $t0, 12($a0)		#En el ultimo campo del nodo a eliminar, guardo la direcc de mem de 1er obj lista elim. 
-	sw $a0, slist 	#a0 node adrdress in unused list #direcc de nodo a0 en lista de no utilizados. Slist apunta a nodo a borrar
-	jr $ra		#vuelvo al menu
+	sw $a0, slist 		#direcc de nodo a0 en lista de no utilizados. Slist apunta a nodo a borrar
+	jr $ra			#vuelvo al menu
 	
 
 
 
 
 
-
 newobject:	#anexar un objeto a la categoria seleccionada en curso
+
 	addiu $sp, $sp, -4	                    
 	sw $ra, 4($sp)		#guardo la direccion para retornar al menu
 	lw $s0, wclist		#cargo el contenido de wclist(direcc al nodo seleccionado de la lista de categ)
@@ -594,9 +602,6 @@ listobjects: 	#listar objetos de la categoria en curso
 	
 
 	end_listobject:
-		#li $v0,4
-		#la $a0, return
-		#syscall
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu 
 		addiu $sp, $sp, 4
 		jr $ra	
@@ -634,9 +639,6 @@ delobject:		#Borrar un objeto de la categoría seleccionada en curso usando el I
 		move $a0, $t0		# seteo direcc del nodo a borrar
 		move $a1, $s3		#VEER!!!  #seteo direcc de la lista donde esta el nodo a borrar
 		jal delnode_obj
-		#li $v0, 4
-		#la $a0, return		#imprimo \n
-		#syscall
 		li $v0, 4
 		la $a0, success		#imprimo mensaje de exito
 		syscall
@@ -687,9 +689,6 @@ delobject:		#Borrar un objeto de la categoría seleccionada en curso usando el I
 	
 
 	end_delobject:
-		#li $v0,4
-		#la $a0, return
-		#syscall
 		lw $ra, 4($sp)		#recupero la direcc para volver al menu 
 		addiu $sp, $sp, 4
 		jr $ra	
